@@ -1,11 +1,11 @@
 #!/bin/sh
 #
-# hdactl      This shell script takes care of starting and stopping hdactl.
+# hda-ctl      This shell script takes care of starting and stopping hda-ctl.
 #
 # chkconfig:    345 65 35
-# description:  hdactl provides support for dynamically updating DHCP/DNS services
-# processname:  hdactl
-# config:       /etc/sysconfig/hdactl
+# description:  hda-ctl provides support for dynamically updating DHCP/DNS services
+# processname:  hda-ctl
+# config:       /etc/sysconfig/hda-ctl
 
 # Source function library.
 . /etc/rc.d/init.d/functions
@@ -16,9 +16,9 @@
 # Check that networking is up.
 [ "$NETWORKING" = "no" ] && exit 0
 
-. /etc/sysconfig/hdactl
+. /etc/sysconfig/hda-ctl
 
-exec="/usr/bin/hdactl"
+exec="/usr/bin/hda-ctl"
 prog=$(basename $exec)
 lockfile=/var/lock/subsys/$prog
 
@@ -26,12 +26,12 @@ start() {
     if [ -f $lockfile ]; then
 	return 0
     fi
-    if [ ! -e /var/cache/hdactl.cache ]; then
-	logger "hdactl: this hda has not been completely installed; exiting"
+    if [ ! -e /var/cache/hda-ctl.cache ]; then
+	logger "hda-ctl: this hda has not been completely installed; exiting"
 	return 0
     fi
     echo -n $"Starting $prog: "
-    daemon $exec $HDACTL_OPTIONS
+    daemon $exec $HDA_CTL_OPTIONS
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile

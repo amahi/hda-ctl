@@ -21,7 +21,7 @@
 #
 
 require 'fileutils'
-ROOT_DIR = "/usr/share/hdactl/web-installer"
+ROOT_DIR = "/usr/share/hda-ctl/web-installer"
 require File.join(ROOT_DIR, "config.rb")
 
 PROGRESS_PER_LINE = 3

@@ -92,13 +92,13 @@ sub DisconnectFromDatabase
         or warn " Disconnection failed: $DBI::errstr\n";
 }
 
-# Restart hdactl and other services related to networking
+# Restart hda-ctl and other services related to networking
 sub RestartServices
 {
-	system("hdactl-hup");
+	system("hda-ctl-hup");
 	sleep 2;
 	system("service network restart");
 	sleep 2;
-	system("hdactl-hup");
+	system("hda-ctl-hup");
 	print "It is strongly recommended that you reboot all systems on your network at this point.\n";
 }

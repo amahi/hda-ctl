@@ -1,7 +1,6 @@
-# NOTE (praveen, 2009-06-14): Not including hdactl hda-install.
 #Installing init.d scripts this way due to running chkconfig in post inst
 
-hdactl		        /usr/bin
+hda-ctl		        /usr/bin
 hda-install		/usr/bin
 hda-settings            /usr/bin
 hda-alias               /usr/bin
@@ -12,14 +11,13 @@ hda-change-dns		/usr/bin
 amahi-installer		/usr/bin
 hda-php-zone-change	/usr/bin
 hda-install-gem         /usr/bin
-hdactl-hup		/usr/bin
+hda-ctl-hup		/usr/bin
 # hdactrl.initscript.debian is being handled by dh_installinit dh $@ Calls dh_installinit
-hdactl.sysconfig 	/etc/sysconfig
-amahi-hda               /usr/share/hdactl
+hda-ctl.sysconfig 	/etc/sysconfig
+amahi-hda               /usr/share/hda-ctl
 # amahi-installer.initscript is being handled by dh_installinit dh $@ Calls dh_installinit
 # Need to research how to install desktop icons should be
-web-installer		/usr/share/hdactl
-httpd                   /usr/share/hdactl
-samba                   /usr/share/hdactl
+web-installer		/usr/share/hda-ctl
+httpd                   /usr/share/hda-ctl
+samba                   /usr/share/hda-ctl
 hda-update		/etc/cron.hourly
-

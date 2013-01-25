@@ -1,0 +1,13 @@
+hda-ctl: non-standard-dir-in-var var/hda/
+hda-ctl: binary-without-manpage usr/bin/amahi-installer
+hda-ctl: binary-without-manpage usr/bin/hda-alias
+hda-ctl: binary-without-manpage usr/bin/hda-change-dns
+hda-ctl: binary-without-manpage usr/bin/hda-change-gw
+hda-ctl: binary-without-manpage usr/bin/hda-install
+hda-ctl: binary-without-manpage usr/bin/hda-install-file
+hda-ctl: binary-without-manpage usr/bin/hda-install-gem
+hda-ctl: binary-without-manpage usr/bin/hda-php-zone-change
+hda-ctl: binary-without-manpage usr/bin/hda-register-apps
+hda-ctl: binary-without-manpage usr/bin/hda-settings
+hda-ctl: binary-without-manpage usr/bin/hda-ctl
+hda-ctl: binary-without-manpage usr/bin/hda-ctl-hup

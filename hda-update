@@ -3,7 +3,7 @@
 
 exec >> /var/log/hda-updates.log 2>&1
 
-if ! grep -q yes /var/cache/hdactl.cache
+if ! grep -q yes /var/cache/hda-ctl.cache
 then
 	echo "===================================================="
 	echo "system not installed yet at time `date`"
@@ -23,10 +23,10 @@ for i in 1 2 3; do
 	if grep -q Ubuntu /proc/version
 	then
 		apt-get update
-		apt-get -y install hdactl '^hda-.*' '^amahi-.*'
+		apt-get -y install '^hda-.*' '^amahi-.*'
 	else
-		yum -y install 'hda-*' 'hdactl'
-		yum -y update 'hda-*' 'hdactl' 'amahi-*' && exit 0
+		yum -y install 'hda-*'
+		yum -y update 'hda-*' 'amahi-*' && exit 0
 	fi
 done
 

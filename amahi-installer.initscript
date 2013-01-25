@@ -5,7 +5,7 @@
 # chkconfig:    345 65 35
 # description:  amahi-installer provides support for running amahi-installer
 # processname:  amahi-installer
-# config:       /etc/sysconfig/hdactl
+# config:       /etc/sysconfig/hda-ctl
 
 # Source function library.
 . /etc/rc.d/init.d/functions
@@ -34,7 +34,7 @@ start() {
 
 stop() {
     echo -n $"Stopping $prog: "
-    killproc /usr/share/hdactl/web-installer/install-server
+    killproc /usr/share/hda-ctl/web-installer/install-server
     retval=$?
     echo
     [ $retval -eq 0 ] && rm -f $lockfile

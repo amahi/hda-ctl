@@ -4,9 +4,9 @@
 export DH_VERBOSE=1
 
 override_dh_auto_build:
-	make hdactl-hup
+	make hda-ctl-hup
 	dh_auto_install
 override_dh_installinit:
-	dh_installinit --no-start --name=hdactl
+	dh_installinit --no-start --name=hda-ctl
 	dh_installinit --no-start --name=amahi-installer
 

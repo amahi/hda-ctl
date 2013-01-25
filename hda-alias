@@ -58,8 +58,8 @@ sub get_db_settings {
 	}
 }
 
-sub do_hdactl_hup {
-	system("hdactl-hup");
+sub do_hda_ctl_hup {
+	system("hda-ctl-hup");
 }
 
 sub do_add {
@@ -80,7 +80,7 @@ sub do_add {
 	$sth = $dbh->prepare("INSERT INTO dns_aliases (name, address) values ('$alias', '')");
 	$sth->execute();
 	# FIXME - check for errors.
-	&do_hdactl_hup();
+	&do_hda_ctl_hup();
 }
 
 sub do_remove {
@@ -90,7 +90,7 @@ sub do_remove {
 
 	my $sth = $dbh->prepare("DELETE FROM dns_aliases where name = '$alias'");
 	$sth->execute();
-	&do_hdactl_hup();
+	&do_hda_ctl_hup();
 }
 
 sub usage {

@@ -1,4 +1,4 @@
-Source: hdactl
+Source: hda-ctl
 Section: web
 Priority: extra
 Maintainer: Frans Meulenbroeks <fransmeulenbroeks@gmail.com>
@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 7.0.50)
 Standards-Version: 3.9.3
 Homepage: http://www.amahi.org/
 
-Package: hdactl
+Package: hda-ctl
 Architecture: any 
 Depends: chkconfig,bind9,bind9utils,dhcp3-server,mysql-server,samba,apache2,monit,libauthen-pam-perl,ruby,libdbd-mysql-ruby,ruby-dev,eruby,libaugeas-ruby,libdb-ruby1.8,ri1.8,php5-mysql,php5,libapache2-mod-php5,cadaver,liburi-perl,libwww-perl,rubygems,${misc:Depends},${shlibs:Depends}
 Description: Amahi Home Digital Assistant daemon

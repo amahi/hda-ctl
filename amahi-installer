@@ -153,4 +153,4 @@ unless ($opt_q) {
 
 &daemonize;
 
-exec "/usr/share/hdactl/web-installer/install-server &> $LOG";
+exec "/usr/share/hda-ctl/web-installer/install-server &> $LOG";

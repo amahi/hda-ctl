@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# hdactl init.d script with LSB support.
+# hda-ctl init.d script with LSB support.
 #
 # Copyright (c) 2009 Amahi Team.
 #
@@ -20,7 +20,7 @@
 # Suite 330, Boston, MA 02111-1307 USA
 #
 ### BEGIN INIT INFO
-# Provides:          hdactl
+# Provides:          hda-ctl
 # Required-Start:    $network
 # Required-Stop:
 # Should-Start:
@@ -33,15 +33,15 @@
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
-DAEMON=/usr/bin/hdactl
-NAME=hdactl
+DAEMON=/usr/bin/hda-ctl
+NAME=hda-ctl
 DESC="Amahi HDA daemon"
 LOGDIR=/var/log/hda  # Revisit this.
 
 PIDFILE=/var/run/$NAME.pid
 
 test -x $DAEMON || exit 0
-test  ! -e /var/cache/hdactl.cache && logger "hdactl: amahi has not been completely installed; exiting" && exit 0
+test  ! -e /var/cache/hda-ctl.cache && logger "hda-ctl: amahi has not been completely installed; exiting" && exit 0
 
 . /lib/lsb/init-functions
 

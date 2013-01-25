@@ -25,7 +25,7 @@ case "$1" in
             # not configured before; so first install
             echo "Configuring shares"
             chown 1000:users /var/hda/files/*
-            chmod 4711  /usr/bin/hdactl-hup
+            chmod 4711  /usr/bin/hda-ctl-hup
 
             echo "Installing gems"
             gem list rake -i -v 0.8.7 > /dev/null || gem install rake -v 0.8.7 --no-rdoc --no-ri
@@ -44,7 +44,7 @@ case "$1" in
         # and the things that we always want to do
         echo "configuring: doing common stuff"
         chmod 755 /etc/cron.hourly/hda-update
-        (/usr/sbin/service hdactl restart || true) > /dev/null 2>&1
+        (/usr/sbin/service hda-ctl restart || true) > /dev/null 2>&1
 
         /etc/init.d/amahi-installer restart
         if which invoke-rc.d >/dev/null 2>&1; then

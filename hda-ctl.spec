@@ -1,8 +1,8 @@
-Name:           hdactl
+Name:           hda-ctl
 Version: 4.2.3
 Release:        1
 
-Summary:        hdactl is the Amahi HDA daemon.
+Summary:        hda-ctl is the Amahi HDA daemon.
 
 Group:          System Environment/Daemons
 License:        GPL
@@ -26,12 +26,12 @@ BuildRequires:      gcc
 %define debug_package %{nil}
 
 %description
-hdactl is the Amahi HDA daemon process.
+hda-ctl is the Amahi HDA daemon process.
 
 %prep
 %setup -q
 
-make hdactl-hup
+make hda-ctl-hup
 
 %build
 
@@ -47,34 +47,34 @@ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/httpd/conf.d
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/sudoers.d
 mkdir -p $RPM_BUILD_ROOT/var/hda
 mkdir -p $RPM_BUILD_ROOT/var/hda/elevated
-mkdir -p $RPM_BUILD_ROOT/usr/share/hdactl
+mkdir -p $RPM_BUILD_ROOT/usr/share/hda-ctl
 mkdir -p $RPM_BUILD_ROOT/etc/skel/Desktop
 mkdir -p $RPM_BUILD_ROOT/root/Desktop
 
-install -m 755 -p hdactl hda-install $RPM_BUILD_ROOT%{_bindir}
+install -m 755 -p hda-ctl hda-install $RPM_BUILD_ROOT%{_bindir}
 (cd $RPM_BUILD_ROOT%{_bindir} && ln -sf hda-install hda-new-install)
 install -m 755 -p hda-settings hda-alias hda-install-file $RPM_BUILD_ROOT%{_bindir}
 install -m 755 -p hda-register-apps hda-install-gem $RPM_BUILD_ROOT%{_bindir}
 install -m 755 -p hda-change-gw hda-change-dns amahi-installer hda-php-zone-change hda-fix-sudoers $RPM_BUILD_ROOT%{_bindir}
 # FIXME - remove after a while. added on Mon Feb 28 01:16:51 PST 2011
 install -m 755 -p hda-upgrade-amahi5-to-amahi6 $RPM_BUILD_ROOT%{_bindir}
-install -m 4755 -p hdactl-hup $RPM_BUILD_ROOT%{_bindir}
+install -m 4755 -p hda-ctl-hup $RPM_BUILD_ROOT%{_bindir}
 install -m 0440 -p hda-privs $RPM_BUILD_ROOT%{_sysconfdir}/sudoers.d/amahi
-install -p hdactl.initscript $RPM_BUILD_ROOT%{_initrddir}/hdactl
-install -p hdactl.sysconfig $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/hdactl
-install -p amahi-hda $RPM_BUILD_ROOT/usr/share/hdactl/amahi-hda
+install -p hda-ctl.initscript $RPM_BUILD_ROOT%{_initrddir}/hda-ctl
+install -p hda-ctl.sysconfig $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/hda-ctl
+install -p amahi-hda $RPM_BUILD_ROOT/usr/share/hda-ctl/amahi-hda
 install -p amahi-installer.initscript $RPM_BUILD_ROOT%{_initrddir}/amahi-installer
 
 rsync -Ca desktop-icons/ $RPM_BUILD_ROOT/etc/skel/Desktop
 rsync -Ca desktop-icons/ $RPM_BUILD_ROOT/root/Desktop
-rsync -Ca web-installer $RPM_BUILD_ROOT/usr/share/hdactl/
+rsync -Ca web-installer $RPM_BUILD_ROOT/usr/share/hda-ctl/
 
 # periodic updates
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/cron.hourly
 install -m 700 -p hda-update $RPM_BUILD_ROOT%{_sysconfdir}/cron.hourly
 
 # base initialitation
-rsync -Ca httpd $RPM_BUILD_ROOT/usr/share/hdactl/
+rsync -Ca httpd $RPM_BUILD_ROOT/usr/share/hda-ctl/
 
 # calendar server non-destructive initialitation
 mkdir -p $RPM_BUILD_ROOT/var/hda/calendar
@@ -83,7 +83,7 @@ mkdir -p $RPM_BUILD_ROOT/var/hda/calendar/html
 mkdir -p $RPM_BUILD_ROOT/var/hda/calendar/locks
 
 # file server non-destructive initialization for later
-rsync -Ca samba $RPM_BUILD_ROOT/usr/share/hdactl/
+rsync -Ca samba $RPM_BUILD_ROOT/usr/share/hda-ctl/
 mkdir -p $RPM_BUILD_ROOT/var/hda/files/Backups
 mkdir -p $RPM_BUILD_ROOT/var/hda/files/Books
 mkdir -p $RPM_BUILD_ROOT/var/hda/files/Docs
@@ -98,13 +98,13 @@ rm -rf $RPM_BUILD_ROOT
 %pre
 
 %post
-/sbin/chkconfig --add hdactl
+/sbin/chkconfig --add hda-ctl
 /sbin/chkconfig --add amahi-installer
 
 mkdir -p /var/hda/files
 
-if [[ -e /var/cache/hdactl.cache ]]; then
-	if grep -q yes /var/cache/hdactl.cache ; then
+if [[ -e /var/cache/hda-ctl.cache ]]; then
+	if grep -q yes /var/cache/hda-ctl.cache ; then
 		(/usr/sbin/usermod -a -G users apache) || true
 
 		# FIXME - added on 3/24/09, to be removed after 5/30/09
@@ -137,31 +137,33 @@ fi
 
 if [ "$1" = 0 ]; then
 	# not an update, a complete uninstall
-	/sbin/service hdactl stop > /dev/null 2>&1 || true
-	/sbin/chkconfig --del hdactl
+	/sbin/service hda-ctl stop > /dev/null 2>&1 || true
+	/sbin/chkconfig --del hda-ctl
 	/sbin/chkconfig --del amahi-installer
 else
 	# an update
-	/sbin/service hdactl restart > /dev/null 2>&1 || true
+	/sbin/service hda-ctl restart > /dev/null 2>&1 || true
 fi
 
 %files
 %defattr(-,root,root,-)
 %{_bindir}/*
-%{_sysconfdir}/sysconfig/hdactl
+%{_sysconfdir}/sysconfig/hda-ctl
 %{_sysconfdir}/skel/Desktop
 /root/Desktop/*
 %{_sysconfdir}/cron.hourly/hda-update
 %attr(0440, root, root)%{_sysconfdir}/sudoers.d/amahi
 %ghost %attr(-, 500, 100) /var/hda/files
-%attr(4755, root, root) %{_bindir}/hdactl-hup
-%{_initrddir}/hdactl
+%attr(4755, root, root) %{_bindir}/hda-ctl-hup
+%{_initrddir}/hda-ctl
 %{_initrddir}/amahi-installer
-/usr/share/hdactl/*
+/usr/share/hda-ctl/*
 /var/hda/elevated
 %attr(755, apache, apache) /var/hda/calendar
 
 %changelog
+* Sun Jan 13 2013 carlos puchol
+- rename to hda-ctl and start on f18 port
 * Sun Mar 11 2007 carlos puchol
 - added hda.repo, and many other improvements
 * Sat Mar 10 2007 carlos puchol
@@ -169,4 +171,4 @@ fi
 * Sat Dec 09 2006 carlos puchol
 - initial file
 * Tue Feb 20 2006 carlos puchol
-- add hdactl-hup, with uid
+- add hda-ctl-hup, with uid

@@ -14,7 +14,7 @@
 // License along with this program; if not, write to the Amahi
 // team at http://www.amahi.org/ under "Contact Us."
 
-/* signal the hdactl process */
+/* signal the hda-ctl process */
 /* exits with 0 if it works, -1 if not */
 
 #include <stdlib.h>
@@ -30,7 +30,7 @@
 
 int main (int argc, char *argv[])
 {
-	int fd = open ("/var/run/hdactl.pid", O_RDONLY);
+	int fd = open ("/var/run/hda-ctl.pid", O_RDONLY);
 
 	if (fd < 0) exit (-1);
 
