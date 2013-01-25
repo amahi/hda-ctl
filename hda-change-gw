@@ -1,0 +1,104 @@
+#!/usr/bin/perl -w
+#
+# Amahi Home Server
+# Copyright (C) 2007-2009 Amahi Team
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License v3
+# (29 June 2007), as published in the COPYING file.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# file COPYING for more details.
+# 
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Amahi
+# team at http://www.amahi.org/ under "Contact Us."
+
+use DBI;
+
+# Globals
+my  $m_host='localhost';
+my  $m_database='hda_production';
+my  $m_user='amahihda';
+my  $m_pass='AmahiHDARulez';
+my  $m_net='';
+my  $m_gateway='';
+my  $m_gatewayip='';
+my  $dbhM='';
+my  $sth='';
+
+# Sub Pototypes 
+sub CollectCommandPromptInfo;
+sub CalculateDatabaseSettings;
+sub ConnectToDatabase;
+sub ModifyDatabase;
+sub DisconnectFromDatabase;
+sub RestartServices;
+
+# Main
+CollectCommandPromptInfo;
+CalculateDatabaseSettings;
+ConnectToDatabase;
+ModifyDatabase;
+DisconnectFromDatabase;
+RestartServices;
+
+# Get command line arguments
+sub CollectCommandPromptInfo
+{
+        ### Check that user has supplied correct number of command line args
+        die "Usage:\n
+             hda-change-gw <gateway ip address>\n
+             Pass the full IP address of your router/gateway\n"
+             unless @ARGV == 1;
+
+        $m_gatewayip = $ARGV[0];
+}
+
+
+# Split the command line arguments up to figure out the settings for "net" and "gw"
+sub CalculateDatabaseSettings
+{
+	my @octets = split(/\./,$m_gatewayip);
+	$m_net = "$octets[0].$octets[1].$octets[2]";
+	$m_gateway = $octets[3];
+}
+
+
+# Connect to the database to prepare for modification
+sub ConnectToDatabase
+{
+        $dbhM = DBI->connect("dbi:mysql:database=$m_database;host=$m_host","$m_user","$m_pass")
+                        or die "Can't connect to MySQL process! \nError: $DBI::errstr\n";
+}
+
+# Modify the database with the settings we previously calculated.
+sub ModifyDatabase
+{
+	$sth = $dbhM->prepare("UPDATE $m_database.settings SET value = ? WHERE settings.name = 'net' LIMIT 1;");
+	$sth->execute($m_net) or die "Couldn't execute statement: " . $sth->errstr;
+	$sth = $dbhM->prepare("UPDATE $m_database.settings SET value = ? WHERE settings.name = 'gateway' LIMIT 1;");
+	$sth->execute($m_gateway) or die "Couldn't execute statement: " . $sth->errstr;
+	$sth = $dbhM->prepare("UPDATE $m_database.dns_aliases SET address = ? WHERE dns_aliases.name = 'router' LIMIT 1;");
+	$sth->execute($m_gateway) or die "Couldn't execute statement: " . $sth->errstr; 
+	print "Network settings were successfully applied.\n"
+}
+
+sub DisconnectFromDatabase
+{
+       $dbhM->disconnect
+        or warn " Disconnection failed: $DBI::errstr\n";
+}
+
+# Restart hdactl and other services related to networking
+sub RestartServices
+{
+	system("hdactl-hup");
+	sleep 2;
+	system("service network restart");
+	sleep 2;
+	system("hdactl-hup");
+	print "It is strongly recommended that you reboot all systems on your network at this point.\n";
+}

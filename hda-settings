@@ -1,0 +1,98 @@
+#!/usr/bin/perl -w
+#
+# Amahi Home Server
+# Copyright (C) 2007-2009 Amahi Team
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License v3
+# (29 June 2007), as published in the COPYING file.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# file COPYING for more details.
+# 
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Amahi
+# team at http://www.amahi.org/ under "Contact Us."
+
+use strict;
+use DBI();
+
+my $dbh;
+my %settings;
+
+my $DATABASE_NAME = "hda_production";
+my $DATABASE_USER = "amahihda";
+my $DATABASE_PASSWORD = "AmahiHDARulez";
+
+sub db_connect {
+
+	my $password = $DATABASE_PASSWORD ; # &get_password();
+
+	# connect to the database.
+	$dbh = DBI->connect("DBI:mysql:database=$DATABASE_NAME;host=localhost",
+				$DATABASE_USER, $password, {RaiseError => 1})
+		or die $DBI::errstr;
+}
+
+
+sub get_db_settings {
+
+	my $sth = $dbh->prepare("SELECT Name, Value, Kind FROM settings");
+	$sth->execute();
+
+	print "General settings:\n";
+	my @row = ();
+	while (@row = $sth->fetchrow_array) {
+		my $name = $row[0];
+		my $value = $row[1];
+		my $kind = $row[2];
+		$value = $value || "";
+		$settings {$name} = $value;
+		print "\t$kind/$name: $value\n";
+	}
+}
+
+sub get_db_hosts {
+
+	my $sth = $dbh->prepare("SELECT host, address, mac FROM hosts");
+	$sth->execute();
+
+	print "Static hosts:\n";
+	my @row = ();
+	while (@row = $sth->fetchrow_array) {
+		my $name = $row[0];
+		my $address = $row[1];
+		my $mac = $row[2];
+		print "\tInterface $mac <- $name/$address\n";
+	}
+}
+
+sub get_db_aliases {
+	my $sth = $dbh->prepare("SELECT name, address FROM dns_aliases");
+	$sth->execute();
+
+	print "Alias names:\n";
+	my @row = ();
+	while (@row = $sth->fetchrow_array) {
+		my $alias = $row[0];
+		my $address = $row[1];
+		my $addr = 'undefined!';
+		if ($address eq '') {
+			$addr = $settings{'self-address'} if (defined($settings{'self-address'}));
+		} else {
+			$addr = $address;
+		}
+		print "\tAlias $alias -> $addr\n";
+	}
+}
+
+sub main {
+	&db_connect ();
+	&get_db_settings ();
+	&get_db_hosts ();
+	&get_db_aliases ();
+}
+
+&main();

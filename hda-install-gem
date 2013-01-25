@@ -1,0 +1,71 @@
+#! /usr/bin/env ruby
+
+def do_system_multiple(args)
+	res = false
+	(1..4).each {
+		res = system("#{args} 2>&1")
+		break if res
+	}
+	res
+end
+
+def run_gem_install(gem, version = nil)
+	ver = version ? " --version #{version} " : ""
+	#puts "system(\"gem install #{gem} #{ver} --no-rdoc --no-ri\")"
+	do_system_multiple "gem install #{gem} #{ver} --no-rdoc --no-ri"
+end
+
+def gem_list
+	res = {}
+	raw_list = open("|gem list") { |f| f.readlines }.map do |g|
+		if g =~ /\s*([^\s]+)\s*\(([^\)]+)\)/
+			gem = $1
+			versions = $2.split /[, ]+/
+			res[gem] = versions
+			# puts "DEBUG gem: \"#{gem}\" -> #{versions.inspect}"
+		end
+	end
+	res
+end
+
+# return true if there are no errors - pass thru false for errors
+def install_gem(gem, version = nil)
+	# puts gem.inspect
+	# puts version.inspect
+	usage if version && ! (version =~ /[0-9.]+/)
+	gems = gem_list
+	if gems[gem]
+		# puts "installed"
+		if version && ! gems[gem].include?(version)
+			# puts "DEBUG: gem versions available: #{gems[gem].inspect}"
+			puts "gem \"#{gem}\" is already installed, but not the version requested. installing #{version} ..."
+			run_gem_install(gem, version)
+			puts "done."
+		else
+			puts "gem \"#{gem}\" is already installed. skipped."
+		end
+	else
+		# puts "NOT installed at all - installing ..."
+		puts "gem \"#{gem}\" is not installed. installing ..."
+		run_gem_install(gem, version)
+		puts "done."
+	end
+	# return true for no errors
+	true
+end
+
+def usage
+	puts "usage: hda-install-gem gem [version]"
+	exit -1
+end
+
+
+unless ARGV.size > 0
+	usage
+end
+
+unless install_gem(ARGV[0], ARGV[1])
+	# could not install - exit with an error
+	exit -1
+end
+

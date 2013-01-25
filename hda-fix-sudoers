@@ -1,0 +1,17 @@
+#!/bin/bash
+# Check the sudoers file for apache
+# If there are no apache entries, add them to enable elevated privileges when installing apps
+
+INSUDOERS=`grep '^#includedir /etc/sudoers.d' /etc/sudoers`;
+
+if [ -z "$INSUDOERS" ]; then
+	echo "#includedir /etc/sudoers.d" >> /etc/sudoers;
+	echo "Host_Alias      HDALOCAL = 127.0.0.1, localhost
+User_Alias      HDAUSER = apache
+Cmnd_Alias      HDAWEBAPPS = /var/hda/web-apps/*/elevated/,/var/hda/apps/*/elevated/,/var/hda/elevated
+Defaults:HDAUSER       !requiretty
+HDAUSER         HDALOCAL=(root) NOPASSWD: HDAWEBAPPS" > /etc/sudoers.d/amahi;
+	chmod 0440 /etc/sudoers.d/amahi
+else
+  echo "Entries already in sudoers-file"
+fi

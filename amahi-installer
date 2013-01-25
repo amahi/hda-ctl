@@ -1,0 +1,156 @@
+#!/usr/bin/perl -w
+#
+# Amahi Home Server
+# Copyright (C) 2007-2009 Amahi Team
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License v3
+# (29 June 2007), as published in the COPYING file.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# file COPYING for more details.
+# 
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Amahi
+# team at http://www.amahi.org/ under "Contact Us."
+
+# web based installer front end
+
+use strict;
+use Getopt::Std;
+
+our($opt_f, $opt_h, $opt_q);
+getopts('fhq');
+
+my $LOG = "/tmp/amahi-ruby-install.log";
+my $platform = "EE";
+
+# FIXME support ubuntu too
+sub get_platform {
+	open (my $file, "< /etc/issue") or
+		return "EE";
+	my $p = <$file>;
+	chomp $p;
+	if ($p =~ /Fedora/) {
+		return "fedora"
+	}
+	if ($p =~ /Ubuntu|Debian/) {
+		return "debian"
+	}
+
+	return "EE";
+}
+
+sub daemonize {
+
+	my $pid = fork;
+	if ($pid < 0) {
+		print STDERR "ERROR: can not fork/detach ($!)\n";
+		exit -1;
+	} elsif ($pid) {
+		# parent simply exit
+		exit 0;
+	}
+	# chil continues execution
+	$SIG{'CHLD'}   = 'DEFAULT';
+	open(STDOUT, ">$LOG");
+	open(STDERR, ">$LOG");
+	open(STDIN,  "</dev/null");
+}
+
+
+sub do_system_multiple () {
+	my $args = shift;
+
+	# attempt the install at most this times
+	my $times = 10;
+	my $res = 0;
+	my $i = 0;
+
+	foreach (1..$times) {
+		last unless ($res = system ($args . " &> $LOG"));
+	}
+
+	return $res;
+}
+
+sub do_basic_checks {
+	$ENV{PATH} .= ":/sbin:/usr/sbin:/bin";
+	my $ruid = $<;
+	my $euid = $>;
+
+	$platform = &get_platform();
+
+	if ($opt_h) {
+		printf "usage: amahi-installer [-f|-h]\n";
+		printf "\t -h  - help\n";
+		printf "\t -f  - force\n";
+		exit (1);
+	}
+	if ($euid != 0) {
+		printf "ERROR: this program must be run as \"root\". type \"su\" (to Switch User to root),\n";
+		printf "       then input your root password, then run this program again.\n\n";
+		printf "       \$ su\n";
+		printf "       Password:         (enter your root password)\n";
+		exit (1);
+	}
+	if (-e "/etc/sysconfig/amahi-hda") {
+		if ($opt_f) {
+			printf "WARNING: this system is already intialized for Amahi use\n";
+		} else {
+			# exit silently
+			printf ": this system is already intialized for Amahi use. (use -f to force at your own risk)\n" unless ($opt_q);
+			exit (0);
+		}
+	}
+}
+
+sub package_installed () {
+	my $pkg = shift;
+
+	return (system("rpm -q $pkg &> /dev/null") == 0);
+}
+
+sub gem_installed () {
+        my $gem = shift;
+        my $ret = system("gem list ^$gem\$ | grep -q $gem &> /dev/null");
+        return ($ret ? 0 : 1);
+}
+
+sub install_rpm_packages() {
+	&do_system_multiple("yum -y install ruby") unless &package_installed("ruby");
+	&do_system_multiple("yum -y install ruby-mysql") unless &package_installed("ruby-mysql");
+	&do_system_multiple("yum -y install rubygem-rack") unless &package_installed("rubygem-rack");
+	&do_system_multiple("yum -y install rubygem-sinatra") unless &package_installed("rubygem-sinatra");
+	#&do_system_multiple("gem uninstall --version 1.2.1 rack");
+}
+
+sub install_packages() {
+	if ($platform eq "fedora") {
+		install_rpm_packages();
+	}
+}
+
+&do_basic_checks();
+install_packages();
+
+
+printf "Starting the Amahi web-based installer (this may take a while) ...\n" unless ($opt_q);
+
+
+unless ($opt_q) {
+	# quiet mode
+	printf "Access it at this URL (Shift-Control-Click on the link):\n\n";
+	printf "\thttp://localhost:2000\n\n";
+	printf "For help:\n";
+	printf "\t- visit http://talk.amahi.org for live community help\n";
+	printf "\t- look for errors at the bottom of /root/hda-install-*.log\n";
+	printf "\t- paste any errors in http://paste.amahi.org/\n";
+	printf "\t- if you think it's a bug, file a bug in http://bugs.amahi.org/\n";
+}
+
+&daemonize;
+
+exec "/usr/share/hdactl/web-installer/install-server &> $LOG";

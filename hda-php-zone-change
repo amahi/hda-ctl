@@ -1,0 +1,19 @@
+#!/usr/bin/ruby
+
+def do_php_timezone
+	require 'augeas'
+
+	zone = ""
+	Augeas::open do |aug|
+		zone = aug.get("/files/etc/sysconfig/clock/ZONE")
+		zone.gsub! ' ', '_'
+		aug.set("/files/etc/php.ini/Date/date.timezone", zone)
+		unless aug.save
+			raise IOError, "Failed to save changes to /etc/php.ini!"
+		end
+	end
+	puts "PHP Zone changed to:"
+	puts "date.timezone = #{zone}"
+end
+
+do_php_timezone

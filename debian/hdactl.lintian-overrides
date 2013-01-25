@@ -1,0 +1,14 @@
+hdactl: non-standard-dir-in-var var/hda/
+hdactl: binary-without-manpage usr/bin/amahi-installer
+hdactl: binary-without-manpage usr/bin/hda-alias
+hdactl: binary-without-manpage usr/bin/hda-change-dns
+hdactl: binary-without-manpage usr/bin/hda-change-gw
+hdactl: binary-without-manpage usr/bin/hda-install
+hdactl: binary-without-manpage usr/bin/hda-install-file
+hdactl: binary-without-manpage usr/bin/hda-install-gem
+hdactl: binary-without-manpage usr/bin/hda-php-zone-change
+hdactl: binary-without-manpage usr/bin/hda-register-apps
+hdactl: binary-without-manpage usr/bin/hda-settings
+hdactl: binary-without-manpage usr/bin/hdactl
+hdactl: binary-without-manpage usr/bin/hdactl-hup
+

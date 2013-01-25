@@ -1,0 +1,78 @@
+#!/bin/sh
+#
+# amahi-installer      This shell script takes care of starting and stopping the amahi-installer.
+#
+# chkconfig:    345 65 35
+# description:  amahi-installer provides support for running amahi-installer
+# processname:  amahi-installer
+# config:       /etc/sysconfig/hdactl
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+# Check that networking is up.
+[ "$NETWORKING" = "no" ] && exit 0
+
+exec="/usr/bin/amahi-installer"
+prog=$(basename $exec)
+lockfile=/var/lock/subsys/$prog
+
+start() {
+    if [ -f $lockfile ]; then
+	return 0
+    fi
+    echo -n $"Starting $prog: "
+    daemon $exec -q
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc /usr/share/hdactl/web-installer/install-server
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+reload() {
+    restart
+}
+
+force_reload() {
+    restart
+}
+
+fdrstatus() {
+    status $prog
+}
+
+# See how we were called.
+case "$1" in
+    start|stop|restart|reload)
+        $1
+        ;;
+    force-reload)
+        force_reload
+        ;;
+    status)
+        fdrstatus
+        ;;
+    condrestart)
+        [ ! -f $lockfile ] || restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart|condrestart|reload|force-reload}"
+        exit 2
+esac

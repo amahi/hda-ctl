@@ -1,0 +1,71 @@
+--- 
+- :header: Easy One-click Install Applications
+  :content: |-
+    Amahi applications are easy to install. Just one click!
+    Select the application you want to install and click on the
+    install button! Hundreds of the most exciting and innovative
+    apps are available for Amahi already. You can package your own
+    yourself or suggest the apps you like for packaging.
+- :header: Live Community Support
+  :content: |-
+    Renowened for being a very friendly Open Source community, you can come by to 
+    <code> <b> http://talk.amahi.org </b> </code> and chat with
+    experts, or hang out there, learning along the way.
+    Installation problems? Come ask your questions to the experts!
+- :header: "Remote access via your own VPN (Virtual Private Network)"
+  :content: |-
+    Around the block or around the world, you can securely connect to your HDA-powered network via the zero-configuration VPN:
+    </p><ul>
+    <li>You need a client program for your OS (Windows, Mac OS X or Linux)</li>
+    <li>You only need to forward one port to your HDA</li>
+    <li>And it's FREE! No per-seat licenses or subscriptions!</li>
+    </ul><p>
+- :header: "Networking Tip: Use the full URL"
+  :content: |-
+    Some computers are "corporate systems" and they have
+    networking settings that may prevent the system from working with Amahi's handy short URLs.
+    If <code> http://hda </code> does not work, use <code> <b> http://hda.home.com </b> </code>
+    (with your own internal domain instead of home.com).
+- :header: "Tell Your Friends About Amahi!"
+  :content: |-
+    Amahi is Open Source and relies on word-of-mouth! We have amazing community support, and the
+    larger the community, the better it will get!
+    Join the hundreds of experts in the Amahi Forums to ask your questions,
+    suggest your ideas, and share your expertise by answering questions!
+- :header: The Perfect Media Server
+  :content: |-
+    Amahi is the perfect media server. Stream your photos, music, videos and
+    movies to your TV, Xbox, Playstation, Media Centers, laptops, settop boxes, and
+    your favorite front-end! Stream via the one-click DLNA or UPnP apps!
+- :header: Free Dynamic DNS Domain
+  :content: |-
+    You get a <b>FREE dynamic DNS</b> standard with your Amahi account, pointing to your
+    HDA-powered network at all times, even if your IP address
+    changes. You can host your own applications in your HDA and share with friends and family!
+- :header: Automatic Amahi Updates
+  :content: |-
+    Amahi updates are automatic. Amahi updates and
+    critical updates in the distribution are automatic.
+    The rest of the updates are left to your choice. Some people
+    prefer to not update if the system is stable, while others like
+    to have the latest updates. We recommend you only perform security updates.
+- :header: "Install Tip: Warnings During Install"
+  :content: |-
+    You may see some security updates during install. This is normal. It's best if you do NOT
+    perform updates while the installer is going on. Wait until
+    your system has rebooted and is fully functional. Later, we recommend
+    you only perform security updates.
+- :header: "Plays Well with Others"
+  :content: |-
+    One of the best things is that Amahi servers play well with
+    all devices and browsers. From Windows XP to Windows 7, from Macs to Linux,
+    iPads, iPhones, iPods, Android or Windows devices, Settop boxes, Smartphones, TV front-end
+    devices like XBMC, WD TV Live boxes, and even NAS devices.
+- :header: Amahi can Control your Router
+  :content: |-
+    Amahi has an experimental modular system to control some router
+    and firewall features. Currently supported are DD-WRT-based
+    devices, some D-Link models and most of the Linksys WRT series of
+    routers.  Would you like to develop one router module of your
+    own? Search for "router control" in the Amahi Wiki or get in
+    touch with the community.

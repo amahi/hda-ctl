@@ -1,0 +1,101 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta name="description" content="Amahi Installer"/>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>Amahi Installer</title>
+    <link rel='stylesheet' href='/css/style.css' type='text/css' media="screen, projection" />
+    <script type="text/javascript" src="/js/jquery-1.4.2.min.js"></script>
+    <script type="text/javascript" src="/js/jquery-easing-1.3.pack.js"></script>
+    <script type="text/javascript" src="/js/jquery-easing-compatibility.1.2.pack.js"></script>
+    <script type="text/javascript" src="/js/coda-slider.1.1.1.pack.js"></script>
+    <script type="text/javascript">
+      var tour_interval = 14000; // milliseconds
+      var tour_items_count = <%= @tour.size %>;
+    </script>
+    <script type="text/javascript" src="/js/slider.js"></script>
+    <script type="text/javascript" src="/js/installer.js"></script>
+  </head>
+  <body>
+    <div id="container">
+      <img id="logo" title="Amahi" src="/images/logo.png" alt=""/>
+      <div id="box">
+
+           <div id="progress-bar-container" style="display: none;">
+              <h1 id="installation-messages">Installation in progress. Please wait...</h1>
+              <div id="progress-bar"><div id="progress-amount">0%</div><div id="bar"></div></div>
+           </div>
+           <div id="messages" style="display: none;" class="error">
+             <p>
+             Sorry this code is invalid, please try again!<br/>
+             Unknown error.<br/>
+             Connection error. Please try again
+             </p>
+           </div>
+
+           <div id="reboot-wrapper" style="display: none;">
+              <a href="/reboot" id="reboot_button"><img src="/images/reboot_red.png" alt="reboot" /></a>
+           </div>
+
+           <div id="tour-box">
+             <div id="tour-top"></div>
+             <div id="tour-content">
+
+               <div class="slider-wrap">
+                  <div id="main-photo-slider" class="csw">
+                      <div class="panelContainer">
+                          <% @tour.each_with_index do |tour, i| %>
+                            <div class="panel" title="Panel <%= i %>">
+                                <div class="wrapper">
+                                    <h1><%= tour[:header] %></h1>
+                                    <p><%= tour[:content] %></p>
+                                </div>
+                            </div>
+                          <% end %>
+                      </div>
+                  </div>
+
+                  <!-- TO MAKE THESE THUMBNAILS ACTUALLY WORK, BOTH THE HASH VALUE (#1, ETC.)
+                    AND THE CLASS="CROSS-LINK" ARE REQUIRED -->
+
+                  <a href="#1" class="cross-link active-thumb"><span class="nav-thumb">1</span></a>
+                  <div id="movers-row">
+                    <% if @tour.size > 1 %>
+                      <% for i in 2..@tour.size %>
+                        <div><a href="#<%= i %>" class="cross-link"><span class="nav-thumb"><%= i %></span></a></div>
+                      <% end %>
+                    <% end %>
+                  </div>
+
+                </div>
+             </div>
+             <div id="tour-bottom"></div>
+		<br/>
+           </div>
+
+        <form name="install_form" id="install-form" method="post" action="/install">
+           <div class="clearfix" id="form-content-wrapper">
+           <label for="code-input">Install Code</label>
+             <div id="input-wrapper">
+               <div id="close-door"></div>
+               <input type="text" name="code" value="This HDA's Install Code" id="code-input" maxlength="18" />
+             </div>
+             <input id="button_type" type="hidden" name="button" />
+             <button type="submit" onclick="$('#button_type').val('submit'); $('#install-form').submit();" id="submit_button" name="submit" value ="1">submit</button>
+             <button type="button" onclick="$('#button_type').val('cancel'); $('#install-form').submit();" id="cancel_button" name="cancel" disabled="disabled" class="inactive" value="1"></button>
+           </div>
+        </form>
+
+      </div>
+  <div id="footer">
+  &copy; 2011 <a target="_blank" href="http://www.amahi.org">Amahi</a> &nbsp; &nbsp;
+    <a target="_blank" href="http://wiki.amahi.org/">Wiki</a>
+  | <a target="_blank" href="http://forums.amahi.org/">Forums</a>
+  | <a target="_blank" href="http://talk.amahi.org">Live Help</a>
+  | <b><a target="_blank" href="http://wiki.amahi.org/index.php/Installation_troubleshooting">Trouble installing?</a></b>
+  </div>
+    </div>
+  </body>
+</html>

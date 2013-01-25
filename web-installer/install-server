@@ -1,0 +1,240 @@
+#!/usr/bin/ruby
+#
+# Amahi Home Server
+# Copyright (C) 2007-2009 Amahi Team
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License v3
+# (29 June 2007), as published in the COPYING file.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# file COPYING for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Amahi
+# team at http://www.amahi.org/ under "Contact Us."
+
+require 'rubygems'
+require 'sinatra/base'
+require 'yaml'
+
+# DEBUG: this is for development only
+#ROOT_DIR = File.dirname(__FILE__)
+ROOT_DIR = "/usr/share/hdactl/web-installer"
+require File.join(ROOT_DIR, "config.rb")
+
+class AmahiInstaller < Sinatra::Base
+	MAX_RETRIES = 20
+	enable :sessions
+	enable :logging, :dump_errors
+	configure :development do
+		set :port, 2000
+		set :static, true
+		set :root, ROOT_DIR
+		set :public_folder, File.join(ROOT_DIR, 'public')
+		set :output_dir, LOG_DIR
+	end
+
+	def initialize
+		super
+		FileUtils.mkdir_p settings.output_dir
+	end
+
+	get '/' do
+		@tour = read_tour
+		erb :index
+	end
+
+	get '/reboot' do
+		system 'reboot'
+	end
+
+	post '/install' do
+		install_code = params[:code].strip
+		return simple_json(:status => 'error', :message => @errors.join("<br/>")) unless valid(install_code)
+		return simple_json(:status => 'running') if running?
+		cleanup
+
+		initialize_status
+		initialize_progress
+		pid = run_installer(install_code)
+		session["installer_id"] = pid
+		write_pid(pid)
+
+		return simple_json(:status => 'running', :message => '', :progress => '0')
+	end
+
+	post '/cancel' do
+		return unless running?
+
+		stop_installer(session["installer_id"])
+	end
+
+	post '/check-progress' do
+		retries = 0
+		begin
+			progress_with_msg = read_progress
+			progress = progress_with_msg.sub(/:.*$/, '')
+			message = progress_with_msg.sub(progress + ':', '')
+			status = read_status
+			error = read_error
+			if error
+				return simple_json(:status => 'error', :message => error, :progress => progress)
+			end
+			# puts "DEBUG(progress): #{progress}" if settings.environment != :production
+			return simple_json(:status => status, :message => message, :progress => progress)
+		rescue Exception => e
+			# Process info not accessible yet
+			sleep 0.1
+			retries += 1
+			retry if retries < MAX_RETRIES
+			return simple_json(:status => 'error', :message => e, :progress => progress)
+		end
+	end
+
+	protected
+
+	# messages sanitize =========
+
+	def simple_json(data)
+		content = (data.inject([]) {|a, hash| a << "#{hash.first}: '#{sanitize!(hash.last)}'"; a}).join(', ')
+		return "{#{content}}"
+	end
+
+	def sanitize!(msg)
+		return '' if msg == '' or msg.nil?
+		msg.gsub!("\n", '<br/>')
+		msg.gsub!("\\", "\\\\\\\\")
+		msg.gsub!("'", "\\\\'")
+		return msg
+	end
+
+	# validation =========
+
+	def valid(install_code)
+		@errors = []
+		if install_code.length > 18 || install_code.length < 5 || !(install_code =~ /^[a-zA-Z0-9]+$/)
+			@errors << "Please input a valid install code"
+		end
+		return @errors.empty?
+	end
+
+	# tour data =========
+
+	def read_tour
+		YAML.load_file(File.join(ROOT_DIR, "messages.yml"))
+	end
+
+	# methods for running processes =========
+
+	def cleanup
+		File.delete(FILE_PROGRESS) if File.exists?(FILE_PROGRESS)
+		File.delete(FILE_STATUS) if File.exists?(FILE_STATUS)
+		File.delete(FILE_PID) if File.exists?(FILE_PID)
+		File.delete(FILE_STDOUT) if File.exists?(FILE_STDOUT)
+		File.delete(FILE_STDERR) if File.exists?(FILE_STDERR)
+		session["installer_id"] = nil
+	end
+
+	def initialize_status
+		s = File.new(FILE_STATUS, 'w')
+		s.write(STATUSES[:running])
+		s.close
+	end
+
+	def initialize_progress
+		p = File.new(FILE_PROGRESS, 'w')
+		p.write('0')
+		p.close
+	end
+
+	def write_pid(pid)
+		p = File.new(FILE_PID, 'w')
+		p.write(pid)
+		p.close
+	end
+
+	def read_status
+		return 'not_started' unless File.exists?(FILE_STATUS)
+		f = File.new(FILE_STATUS, 'r')
+		status = f.readline
+		f.close
+		return STATUSES.key(status).to_s
+	end
+
+	def running?
+		return false unless File.exists?(FILE_STATUS) && File.exists?(FILE_PID)
+		f = File.new(FILE_STATUS, 'r')
+		status = f.readline
+		f.close
+
+		f = File.new(FILE_PID, 'r')
+		pid = f.readline
+		f.close
+		session["installer_id"] = pid.chomp.strip
+		return (status.chomp.strip == STATUSES[:running]) && (system "ps -p #{session["installer_id"]}")
+	end
+
+	def error_code_known?
+		File.exists?(FILE_STDERR)
+	end
+
+	def run_installer(install_code)
+		# pid = fork { exec "#{File.join(ROOT_DIR, 'processor.rb')}" }
+		pid = fork { exec "#{File.join(settings.root, 'processor.rb')} #{install_code}" }
+		Process.detach(pid)
+		pid
+	end
+
+	def stop_installer(pid)
+		if File.exists?(FILE_STATUS)
+			f = File.new(FILE_STATUS, 'w')
+			status = f.write(STATUSES[:cancelled])
+			f.close
+		end
+		Process.kill("HUP", pid.to_i)
+		Process.detach(pid.to_i)
+	end
+
+	def read_error
+		if error_code_known?
+			error_code = File.open(FILE_STDERR, 'r') { |f| f.readlines }
+			if error_code.last.to_s.strip != '0'
+				f = File.new(FILE_STDOUT, 'r')
+				error = f.readlines.join("\n").split('ERROR').last
+				f.close
+				return "ERROR #{error}"
+			end
+		end
+		return false
+	end
+
+	def read_progress
+		f = File.new(FILE_PROGRESS, 'r')
+		progress = f.readlines.join('')
+		f.close
+		progress.chomp.strip
+	end
+end
+
+def do_basic_checks
+
+	ruid = Process.uid
+	euid = Process.euid
+
+	if euid != 0
+		puts "ERROR: this program must be run as \"root\". type \"su\" (to Switch User to root),"
+		puts "       then input your root password, and run this program again.\n"
+		puts "       \$ su"
+		puts "       Password:         (enter your root password)"
+		exit 1
+	end
+end
+
+# don't run the internal server
+#set :run, false
+
+AmahiInstaller.run! :environment => :development
+

@@ -1,0 +1,124 @@
+#!/usr/bin/perl -w
+#
+# Amahi Home Server
+# Copyright (C) 2007-2009 Amahi Team
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License v3
+# (29 June 2007), as published in the COPYING file.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# file COPYING for more details.
+# 
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Amahi
+# team at http://www.amahi.org/ under "Contact Us."
+
+use strict;
+use DBI();
+use Getopt::Std;
+use LWP::Simple;
+
+my $version = "1.48";
+
+my $DATABASE_NAME = "hda_production";
+my $DATABASE_USER = "amahihda";
+my $DATABASE_PASSWORD = "AmahiHDARulez";
+
+our($opt_h, $opt_D);
+getopts('hD');
+
+# global database handle for both functions below
+my $dbh;
+my %settings;
+
+sub db_connect {
+
+	my $password = $DATABASE_PASSWORD ; # &get_password();
+
+	# connect to the database.
+	$dbh = DBI->connect("DBI:mysql:database=$DATABASE_NAME;host=localhost",
+				$DATABASE_USER, $password, {RaiseError => 1})
+		or die $DBI::errstr;
+}
+
+sub get_db_settings {
+
+	my $sth = $dbh->prepare("SELECT Name, Value FROM settings");
+	$sth->execute();
+
+	my @row = ();
+	while (@row = $sth->fetchrow_array) {
+		my $name = $row[0];
+		my $value = $row[1];
+		$settings {$name} = $value;
+                if ($opt_D) { printf "name = %s, value = %s\n", $name, $value; }
+	}
+}
+
+sub do_hdactl_hup {
+	system("hdactl-hup");
+}
+
+sub do_add {
+	my $alias = shift;
+
+	&db_connect ();
+
+	my $sth = $dbh->prepare("SELECT name FROM dns_aliases where name = '$alias'");
+	$sth->execute();
+
+	my @row = ();
+	if (@row = $sth->fetchrow_array) {
+		# alias exists already
+		# FIXME - warning?
+		return 0;
+	}
+	# else - need to put it in
+	$sth = $dbh->prepare("INSERT INTO dns_aliases (name, address) values ('$alias', '')");
+	$sth->execute();
+	# FIXME - check for errors.
+	&do_hdactl_hup();
+}
+
+sub do_remove {
+	my $alias = shift;
+
+	&db_connect ();
+
+	my $sth = $dbh->prepare("DELETE FROM dns_aliases where name = '$alias'");
+	$sth->execute();
+	&do_hdactl_hup();
+}
+
+sub usage {
+	printf "usage: hda-alias (add|rm) <alias>\n";
+	exit -1;
+}
+
+sub version {
+	printf "hda-alias version $version\n";
+	exit (0);
+}
+
+sub main {
+
+	&version() if (defined($opt_h));
+
+	&usage() unless ($#ARGV > 0 );
+
+	my $op = $ARGV[0];
+	my $alias = $ARGV[1];
+	if ($op eq "add") {
+		return &do_add($alias);
+	} elsif ($op eq "rm") {
+		return &do_remove($alias);
+	} else {
+		&usage();
+	}
+}
+
+&main ();
+

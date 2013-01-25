@@ -1,0 +1,32 @@
+#!/bin/bash
+# Periodic updates of the HDA and Amahi software
+
+exec >> /var/log/hda-updates.log 2>&1
+
+if ! grep -q yes /var/cache/hdactl.cache
+then
+	echo "===================================================="
+	echo "system not installed yet at time `date`"
+	echo "===================================================="
+	exit 0;
+fi
+
+# three attempts
+for i in 1 2 3; do
+	echo "===================================================="
+	sleep=`expr $RANDOM % 180`;
+	echo "starting at `date`"
+	echo "first, sleep $sleep seconds to avoid contentions"
+	sleep $sleep;
+	date=`date`;
+	echo "hda update attempt #$i @ $date"
+	if grep -q Ubuntu /proc/version
+	then
+		apt-get update
+		apt-get -y install hdactl '^hda-.*' '^amahi-.*'
+	else
+		yum -y install 'hda-*' 'hdactl'
+		yum -y update 'hda-*' 'hdactl' 'amahi-*' && exit 0
+	fi
+done
+

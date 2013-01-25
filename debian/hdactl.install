@@ -1,0 +1,25 @@
+# NOTE (praveen, 2009-06-14): Not including hdactl hda-install.
+#Installing init.d scripts this way due to running chkconfig in post inst
+
+hdactl		        /usr/bin
+hda-install		/usr/bin
+hda-settings            /usr/bin
+hda-alias               /usr/bin
+hda-install-file        /usr/bin
+hda-register-apps       /usr/bin
+hda-change-gw 		/usr/bin
+hda-change-dns		/usr/bin
+amahi-installer		/usr/bin
+hda-php-zone-change	/usr/bin
+hda-install-gem         /usr/bin
+hdactl-hup		/usr/bin
+# hdactrl.initscript.debian is being handled by dh_installinit dh $@ Calls dh_installinit
+hdactl.sysconfig 	/etc/sysconfig
+amahi-hda               /usr/share/hdactl
+# amahi-installer.initscript is being handled by dh_installinit dh $@ Calls dh_installinit
+# Need to research how to install desktop icons should be
+web-installer		/usr/share/hdactl
+httpd                   /usr/share/hdactl
+samba                   /usr/share/hdactl
+hda-update		/etc/cron.hourly
+

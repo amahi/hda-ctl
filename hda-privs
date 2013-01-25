@@ -1,0 +1,7 @@
+
+# Amahi related privileges
+
+User_Alias      HDAUSER = apache
+Cmnd_Alias      HDAWEBAPPS = /var/hda/web-apps/*/elevated/,/var/hda/apps/*/elevated/,/var/hda/elevated/
+Defaults:HDAUSER       !requiretty
+HDAUSER         ALL=(root) NOPASSWD: HDAWEBAPPS

@@ -1,0 +1,83 @@
+#!/usr/bin/perl -w
+#
+# Amahi Home Server
+# Copyright (C) 2007-2009 Amahi Team
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License v3
+# (29 June 2007), as published in the COPYING file.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# file COPYING for more details.
+# 
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Amahi
+# team at http://www.amahi.org/ under "Contact Us."
+
+use DBI;
+
+# Globals
+my  $m_host='localhost';
+my  $m_database='hda_production';
+my  $m_user='amahihda';
+my  $m_pass='AmahiHDARulez';
+my  $m_dns1='';
+my  $m_dns2='';
+my  $dbhM='';
+my  $sth='';
+
+# Sub Pototypes 
+sub CollectCommandPromptInfo;
+sub ConnectToDatabase;
+sub ModifyDatabase;
+sub DisconnectFromDatabase;
+sub RestartServices;
+
+# Main
+CollectCommandPromptInfo;
+ConnectToDatabase;
+ModifyDatabase;
+DisconnectFromDatabase;
+RestartServices;
+
+# Get command line arguments
+sub CollectCommandPromptInfo
+{
+        ### Check that user has supplied correct number of command line args
+        die "Usage: hda-change-dns <dns1 ip address> <dns2 ip address>\nPass the full IP address of your two new DNS servers\n"
+             unless @ARGV == 2;
+
+        $m_dns1 = $ARGV[0];
+        $m_dns2 = $ARGV[1];
+}
+
+# Connect to the database to prepare for modification
+sub ConnectToDatabase
+{
+        $dbhM = DBI->connect("dbi:mysql:database=$m_database;host=$m_host","$m_user","$m_pass")
+                        or die "Can't connect to MySQL process! \nError: $DBI::errstr\n";
+}
+
+# Modify the database with the settings we previously calculated.
+sub ModifyDatabase
+{
+	$sth = $dbhM->prepare("UPDATE $m_database.settings SET value = ? WHERE settings.name = 'external-dns1' LIMIT 1 ;");
+	$sth->execute($m_dns1) or die "Couldn't execute statement: " . $sth->errstr;
+	$sth = $dbhM->prepare("UPDATE $m_database.settings SET value = ? WHERE settings.name = 'external-dns2' LIMIT 1 ;");
+	$sth->execute($m_dns2) or die "Couldn't execute statement: " . $sth->errstr;
+	print "Network settings were successfully applied.\n"
+}
+
+sub DisconnectFromDatabase
+{
+       $dbhM->disconnect
+        or warn " Disconnection failed: $DBI::errstr\n";
+}
+
+# Restart hdactl and other services related to networking
+sub RestartServices
+{
+	system("hdactl-hup");
+}

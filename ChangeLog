@@ -1,0 +1,15 @@
+Mon Oct 12 14:30:23 PDT 2009 Carlos Puchol <cpg@removethis.amahi.org>
+
+	* updates to the new installer
+	* fixes to hdactl. closes #333 - default to enabled unless explicitly disabled
+
+Sun Oct 11 04:37:08 2009 -0700 Carlos Puchol <cpg+git@amahi.org>
+
+	* fixes for f11 kickstart install on the new installer
+
+Wed Oct 7 19:43:33 2009 -0500 Michael Essary <essary@gmail.com>
+
+	* Closes #18 - Modified hdactl to provide clients with a
+	  secondary DNS. This patch uses the primary external DNS
+	  setting in the database as the secondary DNS add ress.
+

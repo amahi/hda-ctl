@@ -1,0 +1,177 @@
+hdactl (4.2.3) precise; urgency=low
+
+  * use the NetworkManager API to configure the network as static
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Wed, 12 Dec 2012 04:48:15 -0800
+
+hdactl (4.2.0-1) precise; urgency=low
+
+  * official 6.2 release
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Fri, 28 Sep 2012 04:06:18 -0500
+
+hdactl (4.1.25-1) precise; urgency=low
+
+  * another bump
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Fri, 28 Sep 2012 01:34:08 -0500
+
+hdactl (4.1.24-1) precise; urgency=low
+
+  * bump for testing update
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Sun, 23 Sep 2012 19:01:01 -0700
+
+hdactl (4.1.23-1) precise; urgency=low
+
+  * bump for test release
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Sun, 23 Sep 2012 04:56:53 -0700
+
+hdactl (4.1.22-1) precise; urgency=low
+
+  * update to fix for release with fixes for messed permissions in
+    updates in #927
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Sun, 23 Sep 2012 04:17:21 -0700
+
+hdactl (4.1.21-1) unstable; urgency=low
+
+  * typos
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Fri, 22 Jun 2012 02:15:00 +0100
+
+hdactl (4.1.20-1) unstable; urgency=low
+
+  * more monit fixes
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Thu, 21 Jun 2012 23:45:00 +0100
+
+hdactl (4.1.19-1) unstable; urgency=low
+
+  * more monit fixes
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Wed, 20 Jun 2012 13:45:00 +0100
+
+hdactl (4.1.18-1) unstable; urgency=low
+
+  * update new location for shares, add new Public folder
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Sun, 17 Jun 2012 03:05:00 +0100
+
+hdactl (4.1.17-1) unstable; urgency=low
+
+  * tweaks to installer to simplify the desktop install script
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Wed, 13 Jun 2012 23:05:00 +0100
+
+hdactl (4.1.16-1) unstable; urgency=low
+
+  * set up greyhole as well in ubuntu
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Wed, 13 Jun 2012 14:05:00 +0100
+
+hdactl (4.1.15-1) unstable; urgency=low
+
+  * use bash for the hda-update
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Tue, 12 Jun 2012 14:05:00 +0100
+
+hdactl (4.1.13-1) unstable; urgency=low
+
+  * add periodic automatic updates
+
+ -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Sat, 09 Jun 2012 03:45:00 +0100
+
+hdactl (4.1.12-1) unstable; urgency=low
+
+  * hdactl: remove dependency for openvpn
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Sat, 02 Jun 2012 16:45:00 +0100
+
+hdactl (4.1.11-1) unstable; urgency=low
+
+  * hdactl: use less restrictive umask (022 i.s.o. 077)
+
+ -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Thu, 31 May 2012 13:22:00 +0100
+
+hdactl (4.1.10-1) unstable; urgency=low
+
+  * Updated to revision 4.1.10
+
+ -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Fri, 10 Feb 2012 22:22:00 +0100
+
+hdactl (4.1.9-1) unstable; urgency=low
+
+  * Updated to revision 4.1.9
+
+ -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Fri, 30 Dec 2011 11:00:00 +0100
+
+hdactl (4.1.4-1) unstable; urgency=low
+
+  * Updated to revision 4.1.4
+
+ -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Sun, 16 Oct 2011 11:00:00 +0100
+
+hdactl (4.1.3-1) unstable; urgency=low
+
+  * Updated to revision 4.1.3
+
+ -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Mon, 13 Sep 2011 22:00:00 +0100
+
+hdactl (4.1.1-1) unstable; urgency=low
+
+  * Updated to revision 4.1.1
+
+ -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Mon, 25 Apr 2011 09:35:00 +0100
+
+hdactl (4.0.1-1) unstable; urgency=low
+
+  * Updated to revision 4.0.1
+
+ -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Sat, 26 Mar 2011 14:15:00 +0100
+
+hdactl (4.0.0) unstable; urgency=low
+
+  * Updated to revision 4.0.0
+  * merged hdactl and hdactl.debian
+  * removed libroot-ruby-dev from control, now part of ruby-dev
+
+ -- Frans Meulenbroeks (eFFeM) <fransmeulenbroeks@gmail.com>  Sun, 06 Mar 2011 18:37:47 +0100
+
+hdactl (3.2.2) unstable; urgency=low
+
+  * Fixed init bug.
+
+ -- Kyle Law <tuxmaster@geekstogo.com>  Tue, 23 Mar 2010 04:12:47 -0600
+
+hdactl (3.2.2) karmic; urgency=low
+
+  * clean out the asking for code and other crap that i
+    specifically requested to remove before!
+  * updated credits
+
+ -- Carlos Puchol <cpg+git@amahi.org>  Fri, 19 Mar 2010 20:35:37 -0700
+
+hdactl (3.2.1) unstable; urgency=low
+
+  * Updated to revision 3.2.1
+  * Updated version in changelog so you do not get a .orig error message on make deb
+  * Changed hda-install.debian to match hda-install due to depriceated
+  * Removed wiki /usr/share/hdactl from hdactl.install
+  * Updated makefile to run debuild with -us -uc command to disable package signing.
+  * Updated control to reflect that Amahi Developers are the packager. 
+
+ -- Kyle Law (Anzenketh)  <tuxmaster@geekstogo.com>  Fri, 19 Mar 2010 00:39:08 -0600
+
+hdactl (2.40-1) unstable; urgency=low
+
+  * Updated to revision 2.40.
+
+ -- Praveen Kumar <praveen@kumar.in>  Sat, 01 Aug 2009 13:39:02 -0700
+
+hdactl (2.29-1) unstable; urgency=low
+
+  * Initial release.
+
+ -- Praveen Kumar <praveen@kumar.in>  Sat, 13 Jun 2009 23:22:03 -0700

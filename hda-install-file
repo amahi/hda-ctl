@@ -1,0 +1,190 @@
+#!/usr/bin/perl -w
+#
+# Amahi Home Server
+# Copyright (C) 2007-2009 Amahi Team
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License v3
+# (29 June 2007), as published in the COPYING file.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# file COPYING for more details.
+# 
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Amahi
+# team at http://www.amahi.org/ under "Contact Us."
+
+use strict;
+use DBI();
+use Getopt::Std;
+use LWP::Simple;
+
+my $version = "1.48";
+
+my $DATABASE_NAME = "hda_production";
+my $DATABASE_USER = "amahihda";
+my $DATABASE_PASSWORD = "AmahiHDARulez";
+
+our($opt_h, $opt_D);
+getopts('hD');
+
+# global database handle for both functions below
+my $dbh;
+my %settings;
+
+sub db_connect {
+
+	my $password = $DATABASE_PASSWORD ; # &get_password();
+
+	# connect to the database.
+	$dbh = DBI->connect("DBI:mysql:database=$DATABASE_NAME;host=localhost",
+				$DATABASE_USER, $password, {RaiseError => 1})
+		or die $DBI::errstr;
+}
+
+
+sub get_db_settings {
+
+	my $sth = $dbh->prepare("SELECT Name, Value FROM settings");
+	$sth->execute();
+
+	my @row = ();
+	while (@row = $sth->fetchrow_array) {
+		my $name = $row[0];
+		my $value = $row[1];
+		$settings {$name} = $value;
+                if ($opt_D) { printf "name = %s, value = %s\n", $name, $value; }
+	}
+}
+
+sub clone_perm {
+	my ($i, $o) = (shift, shift);
+
+	my $p = ((stat($i))[2]) & 07777;
+	printf ("clone permissions $i/%03o -> $o\n", $p) if ($opt_D);
+	chmod $p, $o;
+}
+
+sub substitute_dir {
+	my $dir_in = shift;
+	my $dir_out = shift;
+
+	if (! -e $dir_out) {
+		mkdir $dir_out or die "cannot create '$dir_out': $!";
+	}
+
+	die "both '$dir_in' and '$dir_out' must be directories"
+		unless (-d $dir_in && -d $dir_out);
+	opendir (my $dir, $dir_in) or die "cannot open $dir_in: $!";
+
+	# make sure we can read/write the destinaiton directory.
+	# FIXME: security hole until the end of this function!
+	# FIXME: there is probably a huge danger hidden here that stuff may
+	#	accidentally/unintentionally get destroyed.
+	chmod 0777, $dir_out;
+
+	my @files = readdir($dir);
+	for (@files) {
+		# skip dot and dot dot, to avoid infinite recursion
+		next if (/^\.$/ || /^\.\.$/);
+		my $fi = "$dir_in/$_";
+		my $fo = "$dir_out/$_";
+		&substitute_dir ($fi, $fo) if (-d $fi);
+		&substitute ($fi, $fo) if (-f $fi);
+	}
+
+	&clone_perm($dir_in, $dir_out);
+}
+
+sub substitute {
+	my $file_in = shift;
+	my $file_out = shift;
+
+	print "substitute: $file_in -> $file_out\n" if ($opt_D);
+	# if it's a directory, go in and iterate
+	if (-d $file_in) {
+		&substitute_dir($file_in, $file_out);
+		return;
+	}
+
+	# make sure we can read/write the destinaiton file.
+	# FIXME: security hole until the end of this function!
+	# FIXME: there is probably a huge danger hidden here that stuff may
+	#	accidentally/unintentionally get destroyed.
+	chmod (0777, $file_out) if (-e $file_out);
+	open(my $fin, "<", $file_in)
+		or die "cannot open '$file_in' for reading";
+	open(my $fout, ">", $file_out)
+		or die "cannot open '$file_out' for writing";
+
+	my $netmask = $settings{'netmask'};
+	my $self = $settings{'self-address'};
+	my $domain = $settings{'domain'};
+	my $net = $settings{'net'};
+	my $nick = $settings{'nick'};
+	my $api_key = $settings{'api-key'};
+	my $uname = `uname -p`;
+
+	my $arch_64 = "";
+	my $arch = "32";
+	if ($uname =~ /64/) {
+		$arch = "64";
+		$arch_64 = "64";
+	} 
+
+	# substitute keywords
+	while (<$fin>) {
+		s/\@HDA_NETWORK\@/$net/g;
+		s/\@HDA_SELF\@/$self/g;
+		s/\@HDA_DOMAIN\@/$domain/g;
+		s/\@HDA_NETMASK\@/$netmask/g;
+		s/\@HDA_NICKNAME\@/$nick/g;
+		s/\@HDA_API_KEY\@/$api_key/g;
+		s/\@HDA_ARCH\@/$arch/g;
+		s/\@HDA_ARCH_64\@/$arch_64/g;
+		print $fout $_;
+	}
+	close $fin;
+	close $fout;
+
+	&clone_perm($file_in, $file_out);
+}
+
+sub do_file_install {
+	my $src = shift;
+	my $dst = shift;
+
+	&db_connect ();
+	&get_db_settings();
+
+	printf "Installing file '$src' into '$dst' ... \n" if ($opt_D);
+	&substitute ($src, $dst);
+	printf "done.\n" if ($opt_D);
+}
+
+sub usage {
+	printf "usage: hda-install-file <src> <dest>\n";
+	exit -1;
+}
+
+sub version {
+	printf "hda-install-file version $version\n";
+	exit (0);
+}
+
+sub main {
+
+	&version() if (defined($opt_h));
+
+	&usage() unless ($#ARGV > 0 );
+
+	my $src = $ARGV[0];
+	my $dst = $ARGV[1];
+
+	return &do_file_install($src, $dst);
+}
+
+&main ();
+

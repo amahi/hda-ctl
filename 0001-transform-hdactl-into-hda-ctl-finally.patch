@@ -1,0 +1,1439 @@
+From 5bf37adce4b8c41b4a6f3039f67b29ae40f76526 Mon Sep 17 00:00:00 2001
+From: Carlos Puchol <cpg+git@amahi.org>
+Date: Thu, 24 Jan 2013 21:26:25 -0600
+Subject: [PATCH] transform hdactl into hda-ctl (finally)
+
+---
+ platform/hdactl/.gitignore                         |  2 +-
+ platform/hdactl/Makefile                           | 34 +++++------
+ platform/hdactl/amahi-installer                    |  2 +-
+ platform/hdactl/amahi-installer.initscript         |  4 +-
+ platform/hdactl/debian/changelog                   | 68 ++++++++++++----------
+ platform/hdactl/debian/control                     |  4 +-
+ ...installer.init => hda-ctl.amahi-installer.init} |  0
+ .../hdactl/debian/{hdactl.dirs => hda-ctl.dirs}    |  0
+ .../{hdactl.hdactl.init => hda-ctl.hda-ctl.init}   | 12 ++--
+ .../hdactl/debian/{hdactl.init => hda-ctl.init}    |  0
+ .../debian/{hdactl.install => hda-ctl.install}     | 16 +++--
+ platform/hdactl/debian/hda-ctl.lintian-overrides   | 13 +++++
+ .../debian/{hdactl.postinst => hda-ctl.postinst}   |  4 +-
+ platform/hdactl/debian/hdactl.lintian-overrides    | 14 -----
+ platform/hdactl/debian/rules                       |  4 +-
+ platform/hdactl/hda-alias                          |  8 +--
+ platform/hdactl/hda-change-dns                     |  4 +-
+ platform/hdactl/hda-change-gw                      |  6 +-
+ platform/hdactl/{hdactl => hda-ctl}                | 25 ++++----
+ platform/hdactl/{hdactl-hup.c => hda-ctl-hup.c}    |  4 +-
+ .../{hdactl.initscript => hda-ctl.initscript}      | 18 +++---
+ ...initscript.debian => hda-ctl.initscript.debian} | 10 ++--
+ platform/hdactl/{hdactl.spec => hda-ctl.spec}      | 50 ++++++++--------
+ platform/hdactl/hda-ctl.sysconfig                  |  4 ++
+ platform/hdactl/hda-install                        | 20 +++----
+ platform/hdactl/hda-update                         |  8 +--
+ platform/hdactl/hdactl.sysconfig                   |  4 --
+ platform/hdactl/web-installer/install-server       |  2 +-
+ platform/hdactl/web-installer/processor.rb         |  2 +-
+ platform/platform/.gitignore                       |  1 -
+ platform/platform/debian/control                   |  2 +-
+ platform/platform/debian/hda-platform.postinst     |  8 +--
+ platform/platform/hda-platform.spec                |  8 +--
+ platform/platform/hda-usermap                      |  3 +-
+ .../html/app/controllers/network_controller.rb     |  4 +-
+ .../html/app/controllers/setup_controller.rb       | 14 ++---
+ platform/platform/html/app/models/alias.rb         |  2 +-
+ platform/platform/html/app/models/host.rb          |  2 +-
+ platform/platform/html/app/models/server.rb        |  2 +-
+ .../platform/html/app/views/setting/_info.html.erb |  2 +-
+ platform/platform/html/lib/command.rb              | 10 ++--
+ 41 files changed, 200 insertions(+), 200 deletions(-)
+ rename platform/hdactl/debian/{hdactl.amahi-installer.init => hda-ctl.amahi-installer.init} (100%)
+ rename platform/hdactl/debian/{hdactl.dirs => hda-ctl.dirs} (100%)
+ rename platform/hdactl/debian/{hdactl.hdactl.init => hda-ctl.hda-ctl.init} (93%)
+ rename platform/hdactl/debian/{hdactl.init => hda-ctl.init} (100%)
+ rename platform/hdactl/debian/{hdactl.install => hda-ctl.install} (67%)
+ create mode 100644 platform/hdactl/debian/hda-ctl.lintian-overrides
+ rename platform/hdactl/debian/{hdactl.postinst => hda-ctl.postinst} (95%)
+ delete mode 100644 platform/hdactl/debian/hdactl.lintian-overrides
+ rename platform/hdactl/{hdactl => hda-ctl} (97%)
+ rename platform/hdactl/{hdactl-hup.c => hda-ctl-hup.c} (93%)
+ rename platform/hdactl/{hdactl.initscript => hda-ctl.initscript} (72%)
+ rename platform/hdactl/{hdactl.initscript.debian => hda-ctl.initscript.debian} (97%)
+ rename platform/hdactl/{hdactl.spec => hda-ctl.spec} (79%)
+ create mode 100644 platform/hdactl/hda-ctl.sysconfig
+ delete mode 100644 platform/hdactl/hdactl.sysconfig
+
+diff --git a/platform/hdactl/.gitignore b/platform/hdactl/.gitignore
+index 7993f6a..0db2021 100644
+--- a/platform/hdactl/.gitignore
++++ b/platform/hdactl/.gitignore
+@@ -1,2 +1,2 @@
+-hdactl-hup
++hda-ctl-hup
+ release/*
+diff --git a/platform/hdactl/Makefile b/platform/hdactl/Makefile
+index cfba353..dae884f 100644
+--- a/platform/hdactl/Makefile
++++ b/platform/hdactl/Makefile
+@@ -8,34 +8,34 @@ CFLAGS='-Wall'
+ 
+ all: rpm
+ 
+-dist: hdactl-hup
+-	(mkdir -p release && cd release && mkdir -p hdactl-$(VERSION))
+-	rsync -Ca hdactl hdactl-hup.c hdactl.spec hdactl.initscript hdactl.sysconfig hda-install \
++dist: hda-ctl-hup
++	(mkdir -p release && cd release && mkdir -p hda-ctl-$(VERSION))
++	rsync -Ca hda-ctl hda-ctl-hup.c hda-ctl.spec hda-ctl.initscript hda-install \
+ 	        debian hda-install-gem \
+-		amahi-hda httpd samba desktop-icons hdactl.sysconfig \
++		amahi-hda httpd samba desktop-icons hda-ctl.sysconfig \
+ 		hda-settings hda-register-apps hda-install-file hda-alias \
+ 		hda-update hda-change-gw hda-change-dns amahi-installer.initscript \
+ 		web-installer amahi-installer hda-php-zone-change hda-fix-sudoers \
+ 		hda-upgrade-amahi5-to-amahi6 hda-privs networking.ubuntu \
+-		release/hdactl-$(VERSION)/
+-	(cd release && tar -czvf hdactl-$(VERSION).tar.gz hdactl-$(VERSION))
+-	(cd release && rm -rf hdactl-$(VERSION))
++		release/hda-ctl-$(VERSION)/
++	(cd release && tar -czvf hda-ctl-$(VERSION).tar.gz hda-ctl-$(VERSION))
++	(cd release && rm -rf hda-ctl-$(VERSION))
+ update-header:
+-	sed -i -e "s/version *= *\"[0-9.]*\"/version = \"$(VERSION)\"/" hdactl
++	sed -i -e "s/version *= *\"[0-9.]*\"/version = \"$(VERSION)\"/" hda-ctl
+ 	sed -i -e "s/version *= *\"[0-9.]*\"/version = \"$(VERSION)\"/" hda-install
+-	sed -i -e 's/^Version:\s*[0-9.]*\s*$$/Version: $(VERSION)/' hdactl.spec
++	sed -i -e 's/^Version:\s*[0-9.]*\s*$$/Version: $(VERSION)/' hda-ctl.spec
+ 
+ rpm: update-header dist
+-	(cd release && rpmbuild $(SIGN) --target=$(ARCH) -ta hdactl-$(VERSION).tar.gz)
+-	mv $(RPMBUILDDIR)/RPMS/$(ARCH)/hdactl-$(VERSION)-*.$(ARCH).rpm release/
+-	mv $(RPMBUILDDIR)/SRPMS/hdactl-$(VERSION)-*.src.rpm release/
++	(cd release && rpmbuild $(SIGN) --target=$(ARCH) -ta hda-ctl-$(VERSION).tar.gz)
++	mv $(RPMBUILDDIR)/RPMS/$(ARCH)/hda-ctl-$(VERSION)-*.$(ARCH).rpm release/
++	mv $(RPMBUILDDIR)/SRPMS/hda-ctl-$(VERSION)-*.src.rpm release/
+ 
+ deb: update-header dist
+-	(cd release && ln -sf hdactl-$(VERSION).tar.gz hdactl_$(VERSION).orig.tar.gz)
+-	(cd release && tar -zxf hdactl_$(VERSION).orig.tar.gz)
++	(cd release && ln -sf hda-ctl-$(VERSION).tar.gz hda-ctl_$(VERSION).orig.tar.gz)
++	(cd release && tar -zxf hda-ctl_$(VERSION).orig.tar.gz)
+ #Commenting out until can figure out why debuild -S is not working	
+-	#(cd release/hdactl-$(VERSION)/debian && debuild -uc -us && debuild -S -uc -us)
+-	(cd release/hdactl-$(VERSION)/debian && debuild -uc -us)
++	#(cd release/hda-ctl-$(VERSION)/debian && debuild -uc -us && debuild -S -uc -us)
++	(cd release/hda-ctl-$(VERSION)/debian && debuild -uc -us)
+ 
+ install: rpm
+-	(cd release && sudo rpm -Uvh hdactl-$(VERSION)-*.$(ARCH).rpm)
++	(cd release && sudo rpm -Uvh hda-ctl-$(VERSION)-*.$(ARCH).rpm)
+diff --git a/platform/hdactl/amahi-installer b/platform/hdactl/amahi-installer
+index b6ffe25..07ec65d 100755
+--- a/platform/hdactl/amahi-installer
++++ b/platform/hdactl/amahi-installer
+@@ -153,4 +153,4 @@ unless ($opt_q) {
+ 
+ &daemonize;
+ 
+-exec "/usr/share/hdactl/web-installer/install-server &> $LOG";
++exec "/usr/share/hda-ctl/web-installer/install-server &> $LOG";
+diff --git a/platform/hdactl/amahi-installer.initscript b/platform/hdactl/amahi-installer.initscript
+index 3946605..d843730 100755
+--- a/platform/hdactl/amahi-installer.initscript
++++ b/platform/hdactl/amahi-installer.initscript
+@@ -5,7 +5,7 @@
+ # chkconfig:    345 65 35
+ # description:  amahi-installer provides support for running amahi-installer
+ # processname:  amahi-installer
+-# config:       /etc/sysconfig/hdactl
++# config:       /etc/sysconfig/hda-ctl
+ 
+ # Source function library.
+ . /etc/rc.d/init.d/functions
+@@ -34,7 +34,7 @@ start() {
+ 
+ stop() {
+     echo -n $"Stopping $prog: "
+-    killproc /usr/share/hdactl/web-installer/install-server
++    killproc /usr/share/hda-ctl/web-installer/install-server
+     retval=$?
+     echo
+     [ $retval -eq 0 ] && rm -f $lockfile
+diff --git a/platform/hdactl/debian/changelog b/platform/hdactl/debian/changelog
+index 4565cf6..d2f8cb5 100644
+--- a/platform/hdactl/debian/changelog
++++ b/platform/hdactl/debian/changelog
+@@ -1,151 +1,155 @@
+-hdactl (4.2.3) precise; urgency=low
++hda-ctl (4.2.3) precise; urgency=low
++
++  * rename to hda-ctl
++
++hda-ctl (4.2.3) precise; urgency=low
+ 
+   * use the NetworkManager API to configure the network as static
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Wed, 12 Dec 2012 04:48:15 -0800
+ 
+-hdactl (4.2.0-1) precise; urgency=low
++hda-ctl (4.2.0-1) precise; urgency=low
+ 
+   * official 6.2 release
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Fri, 28 Sep 2012 04:06:18 -0500
+ 
+-hdactl (4.1.25-1) precise; urgency=low
++hda-ctl (4.1.25-1) precise; urgency=low
+ 
+   * another bump
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Fri, 28 Sep 2012 01:34:08 -0500
+ 
+-hdactl (4.1.24-1) precise; urgency=low
++hda-ctl (4.1.24-1) precise; urgency=low
+ 
+   * bump for testing update
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Sun, 23 Sep 2012 19:01:01 -0700
+ 
+-hdactl (4.1.23-1) precise; urgency=low
++hda-ctl (4.1.23-1) precise; urgency=low
+ 
+   * bump for test release
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Sun, 23 Sep 2012 04:56:53 -0700
+ 
+-hdactl (4.1.22-1) precise; urgency=low
++hda-ctl (4.1.22-1) precise; urgency=low
+ 
+   * update to fix for release with fixes for messed permissions in
+     updates in #927
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Sun, 23 Sep 2012 04:17:21 -0700
+ 
+-hdactl (4.1.21-1) unstable; urgency=low
++hda-ctl (4.1.21-1) unstable; urgency=low
+ 
+   * typos
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Fri, 22 Jun 2012 02:15:00 +0100
+ 
+-hdactl (4.1.20-1) unstable; urgency=low
++hda-ctl (4.1.20-1) unstable; urgency=low
+ 
+   * more monit fixes
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Thu, 21 Jun 2012 23:45:00 +0100
+ 
+-hdactl (4.1.19-1) unstable; urgency=low
++hda-ctl (4.1.19-1) unstable; urgency=low
+ 
+   * more monit fixes
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Wed, 20 Jun 2012 13:45:00 +0100
+ 
+-hdactl (4.1.18-1) unstable; urgency=low
++hda-ctl (4.1.18-1) unstable; urgency=low
+ 
+   * update new location for shares, add new Public folder
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Sun, 17 Jun 2012 03:05:00 +0100
+ 
+-hdactl (4.1.17-1) unstable; urgency=low
++hda-ctl (4.1.17-1) unstable; urgency=low
+ 
+   * tweaks to installer to simplify the desktop install script
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Wed, 13 Jun 2012 23:05:00 +0100
+ 
+-hdactl (4.1.16-1) unstable; urgency=low
++hda-ctl (4.1.16-1) unstable; urgency=low
+ 
+   * set up greyhole as well in ubuntu
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Wed, 13 Jun 2012 14:05:00 +0100
+ 
+-hdactl (4.1.15-1) unstable; urgency=low
++hda-ctl (4.1.15-1) unstable; urgency=low
+ 
+   * use bash for the hda-update
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Tue, 12 Jun 2012 14:05:00 +0100
+ 
+-hdactl (4.1.13-1) unstable; urgency=low
++hda-ctl (4.1.13-1) unstable; urgency=low
+ 
+   * add periodic automatic updates
+ 
+  -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Sat, 09 Jun 2012 03:45:00 +0100
+ 
+-hdactl (4.1.12-1) unstable; urgency=low
++hda-ctl (4.1.12-1) unstable; urgency=low
+ 
+-  * hdactl: remove dependency for openvpn
++  * hda-ctl: remove dependency for openvpn
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Sat, 02 Jun 2012 16:45:00 +0100
+ 
+-hdactl (4.1.11-1) unstable; urgency=low
++hda-ctl (4.1.11-1) unstable; urgency=low
+ 
+-  * hdactl: use less restrictive umask (022 i.s.o. 077)
++  * hda-ctl: use less restrictive umask (022 i.s.o. 077)
+ 
+  -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Thu, 31 May 2012 13:22:00 +0100
+ 
+-hdactl (4.1.10-1) unstable; urgency=low
++hda-ctl (4.1.10-1) unstable; urgency=low
+ 
+   * Updated to revision 4.1.10
+ 
+  -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Fri, 10 Feb 2012 22:22:00 +0100
+ 
+-hdactl (4.1.9-1) unstable; urgency=low
++hda-ctl (4.1.9-1) unstable; urgency=low
+ 
+   * Updated to revision 4.1.9
+ 
+  -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Fri, 30 Dec 2011 11:00:00 +0100
+ 
+-hdactl (4.1.4-1) unstable; urgency=low
++hda-ctl (4.1.4-1) unstable; urgency=low
+ 
+   * Updated to revision 4.1.4
+ 
+  -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Sun, 16 Oct 2011 11:00:00 +0100
+ 
+-hdactl (4.1.3-1) unstable; urgency=low
++hda-ctl (4.1.3-1) unstable; urgency=low
+ 
+   * Updated to revision 4.1.3
+ 
+  -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Mon, 13 Sep 2011 22:00:00 +0100
+ 
+-hdactl (4.1.1-1) unstable; urgency=low
++hda-ctl (4.1.1-1) unstable; urgency=low
+ 
+   * Updated to revision 4.1.1
+ 
+  -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Mon, 25 Apr 2011 09:35:00 +0100
+ 
+-hdactl (4.0.1-1) unstable; urgency=low
++hda-ctl (4.0.1-1) unstable; urgency=low
+ 
+   * Updated to revision 4.0.1
+ 
+  -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Sat, 26 Mar 2011 14:15:00 +0100
+ 
+-hdactl (4.0.0) unstable; urgency=low
++hda-ctl (4.0.0) unstable; urgency=low
+ 
+   * Updated to revision 4.0.0
+-  * merged hdactl and hdactl.debian
++  * merged hda-ctl and hda-ctl.debian
+   * removed libroot-ruby-dev from control, now part of ruby-dev
+ 
+  -- Frans Meulenbroeks (eFFeM) <fransmeulenbroeks@gmail.com>  Sun, 06 Mar 2011 18:37:47 +0100
+ 
+-hdactl (3.2.2) unstable; urgency=low
++hda-ctl (3.2.2) unstable; urgency=low
+ 
+   * Fixed init bug.
+ 
+  -- Kyle Law <tuxmaster@geekstogo.com>  Tue, 23 Mar 2010 04:12:47 -0600
+ 
+-hdactl (3.2.2) karmic; urgency=low
++hda-ctl (3.2.2) karmic; urgency=low
+ 
+   * clean out the asking for code and other crap that i
+     specifically requested to remove before!
+@@ -153,24 +157,24 @@ hdactl (3.2.2) karmic; urgency=low
+ 
+  -- Carlos Puchol <cpg+git@amahi.org>  Fri, 19 Mar 2010 20:35:37 -0700
+ 
+-hdactl (3.2.1) unstable; urgency=low
++hda-ctl (3.2.1) unstable; urgency=low
+ 
+   * Updated to revision 3.2.1
+   * Updated version in changelog so you do not get a .orig error message on make deb
+   * Changed hda-install.debian to match hda-install due to depriceated
+-  * Removed wiki /usr/share/hdactl from hdactl.install
++  * Removed wiki /usr/share/hda-ctl from hda-ctl.install
+   * Updated makefile to run debuild with -us -uc command to disable package signing.
+   * Updated control to reflect that Amahi Developers are the packager. 
+ 
+  -- Kyle Law (Anzenketh)  <tuxmaster@geekstogo.com>  Fri, 19 Mar 2010 00:39:08 -0600
+ 
+-hdactl (2.40-1) unstable; urgency=low
++hda-ctl (2.40-1) unstable; urgency=low
+ 
+   * Updated to revision 2.40.
+ 
+  -- Praveen Kumar <praveen@kumar.in>  Sat, 01 Aug 2009 13:39:02 -0700
+ 
+-hdactl (2.29-1) unstable; urgency=low
++hda-ctl (2.29-1) unstable; urgency=low
+ 
+   * Initial release.
+ 
+diff --git a/platform/hdactl/debian/control b/platform/hdactl/debian/control
+index 53ae6b1..dedacb3 100644
+--- a/platform/hdactl/debian/control
++++ b/platform/hdactl/debian/control
+@@ -1,4 +1,4 @@
+-Source: hdactl
++Source: hda-ctl
+ Section: web
+ Priority: extra
+ Maintainer: Frans Meulenbroeks <fransmeulenbroeks@gmail.com>
+@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 7.0.50)
+ Standards-Version: 3.9.3
+ Homepage: http://www.amahi.org/
+ 
+-Package: hdactl
++Package: hda-ctl
+ Architecture: any 
+ Depends: chkconfig,bind9,bind9utils,dhcp3-server,mysql-server,samba,apache2,monit,libauthen-pam-perl,ruby,libdbd-mysql-ruby,ruby-dev,eruby,libaugeas-ruby,libdb-ruby1.8,ri1.8,php5-mysql,php5,libapache2-mod-php5,cadaver,liburi-perl,libwww-perl,rubygems,${misc:Depends},${shlibs:Depends}
+ Description: Amahi Home Digital Assistant daemon
+diff --git a/platform/hdactl/debian/hdactl.amahi-installer.init b/platform/hdactl/debian/hda-ctl.amahi-installer.init
+similarity index 100%
+rename from platform/hdactl/debian/hdactl.amahi-installer.init
+rename to platform/hdactl/debian/hda-ctl.amahi-installer.init
+diff --git a/platform/hdactl/debian/hdactl.dirs b/platform/hdactl/debian/hda-ctl.dirs
+similarity index 100%
+rename from platform/hdactl/debian/hdactl.dirs
+rename to platform/hdactl/debian/hda-ctl.dirs
+diff --git a/platform/hdactl/debian/hdactl.hdactl.init b/platform/hdactl/debian/hda-ctl.hda-ctl.init
+similarity index 93%
+rename from platform/hdactl/debian/hdactl.hdactl.init
+rename to platform/hdactl/debian/hda-ctl.hda-ctl.init
+index 14e0a95..acd4947 100755
+--- a/platform/hdactl/debian/hdactl.hdactl.init
++++ b/platform/hdactl/debian/hda-ctl.hda-ctl.init
+@@ -1,13 +1,13 @@
+ #! /bin/sh
+ ### BEGIN INIT INFO
+-# Provides:          hdactl
++# Provides:          hda-ctl
+ # Required-Start:    $remote_fs $syslog $network mysql
+ # Required-Stop:     $remote_fs $syslog
+ # Default-Start:     2 3 4 5
+ # Default-Stop:      0 1 6
+-# Short-Description: initscript to start the hdactl
+-# Description:       this initscript lives in /etc/init.d/hdactl
+-#                    and is used to start the hdactl daemon
++# Short-Description: initscript to start the hda-ctl
++# Description:       this initscript lives in /etc/init.d/hda-ctl
++#                    and is used to start the hda-ctl daemon
+ ### END INIT INFO
+ 
+ # Author: Amahi Debian Packaging team
+@@ -15,8 +15,8 @@
+ 
+ # PATH should only include /usr/* if it runs after the mountnfs.sh script
+ PATH=/sbin:/usr/sbin:/bin:/usr/bin
+-DESC="Starts the HDACTL Deamon"
+-NAME=hdactl
++DESC="Starts the HDA-CTL Deamon"
++NAME=hda-ctl
+ DAEMON=/usr/bin/$NAME
+ DAEMON_ARGS=""
+ PIDFILE=/var/run/$NAME.pid
+diff --git a/platform/hdactl/debian/hdactl.init b/platform/hdactl/debian/hda-ctl.init
+similarity index 100%
+rename from platform/hdactl/debian/hdactl.init
+rename to platform/hdactl/debian/hda-ctl.init
+diff --git a/platform/hdactl/debian/hdactl.install b/platform/hdactl/debian/hda-ctl.install
+similarity index 67%
+rename from platform/hdactl/debian/hdactl.install
+rename to platform/hdactl/debian/hda-ctl.install
+index e365195..2b7610b 100644
+--- a/platform/hdactl/debian/hdactl.install
++++ b/platform/hdactl/debian/hda-ctl.install
+@@ -1,7 +1,6 @@
+-# NOTE (praveen, 2009-06-14): Not including hdactl hda-install.
+ #Installing init.d scripts this way due to running chkconfig in post inst
+ 
+-hdactl		        /usr/bin
++hda-ctl		        /usr/bin
+ hda-install		/usr/bin
+ hda-settings            /usr/bin
+ hda-alias               /usr/bin
+@@ -12,14 +11,13 @@ hda-change-dns		/usr/bin
+ amahi-installer		/usr/bin
+ hda-php-zone-change	/usr/bin
+ hda-install-gem         /usr/bin
+-hdactl-hup		/usr/bin
++hda-ctl-hup		/usr/bin
+ # hdactrl.initscript.debian is being handled by dh_installinit dh $@ Calls dh_installinit
+-hdactl.sysconfig 	/etc/sysconfig
+-amahi-hda               /usr/share/hdactl
++hda-ctl.sysconfig 	/etc/sysconfig
++amahi-hda               /usr/share/hda-ctl
+ # amahi-installer.initscript is being handled by dh_installinit dh $@ Calls dh_installinit
+ # Need to research how to install desktop icons should be
+-web-installer		/usr/share/hdactl
+-httpd                   /usr/share/hdactl
+-samba                   /usr/share/hdactl
++web-installer		/usr/share/hda-ctl
++httpd                   /usr/share/hda-ctl
++samba                   /usr/share/hda-ctl
+ hda-update		/etc/cron.hourly
+-
+diff --git a/platform/hdactl/debian/hda-ctl.lintian-overrides b/platform/hdactl/debian/hda-ctl.lintian-overrides
+new file mode 100644
+index 0000000..9452d9b
+--- /dev/null
++++ b/platform/hdactl/debian/hda-ctl.lintian-overrides
+@@ -0,0 +1,13 @@
++hda-ctl: non-standard-dir-in-var var/hda/
++hda-ctl: binary-without-manpage usr/bin/amahi-installer
++hda-ctl: binary-without-manpage usr/bin/hda-alias
++hda-ctl: binary-without-manpage usr/bin/hda-change-dns
++hda-ctl: binary-without-manpage usr/bin/hda-change-gw
++hda-ctl: binary-without-manpage usr/bin/hda-install
++hda-ctl: binary-without-manpage usr/bin/hda-install-file
++hda-ctl: binary-without-manpage usr/bin/hda-install-gem
++hda-ctl: binary-without-manpage usr/bin/hda-php-zone-change
++hda-ctl: binary-without-manpage usr/bin/hda-register-apps
++hda-ctl: binary-without-manpage usr/bin/hda-settings
++hda-ctl: binary-without-manpage usr/bin/hda-ctl
++hda-ctl: binary-without-manpage usr/bin/hda-ctl-hup
+diff --git a/platform/hdactl/debian/hdactl.postinst b/platform/hdactl/debian/hda-ctl.postinst
+similarity index 95%
+rename from platform/hdactl/debian/hdactl.postinst
+rename to platform/hdactl/debian/hda-ctl.postinst
+index cb8483d..174aea2 100644
+--- a/platform/hdactl/debian/hdactl.postinst
++++ b/platform/hdactl/debian/hda-ctl.postinst
+@@ -25,7 +25,7 @@ case "$1" in
+             # not configured before; so first install
+             echo "Configuring shares"
+             chown 1000:users /var/hda/files/*
+-            chmod 4711  /usr/bin/hdactl-hup
++            chmod 4711  /usr/bin/hda-ctl-hup
+ 
+             echo "Installing gems"
+             gem list rake -i -v 0.8.7 > /dev/null || gem install rake -v 0.8.7 --no-rdoc --no-ri
+@@ -44,7 +44,7 @@ case "$1" in
+         # and the things that we always want to do
+         echo "configuring: doing common stuff"
+         chmod 755 /etc/cron.hourly/hda-update
+-        (/usr/sbin/service hdactl restart || true) > /dev/null 2>&1
++        (/usr/sbin/service hda-ctl restart || true) > /dev/null 2>&1
+ 
+         /etc/init.d/amahi-installer restart
+         if which invoke-rc.d >/dev/null 2>&1; then
+diff --git a/platform/hdactl/debian/hdactl.lintian-overrides b/platform/hdactl/debian/hdactl.lintian-overrides
+deleted file mode 100644
+index 4fd9f00..0000000
+--- a/platform/hdactl/debian/hdactl.lintian-overrides
++++ /dev/null
+@@ -1,14 +0,0 @@
+-hdactl: non-standard-dir-in-var var/hda/
+-hdactl: binary-without-manpage usr/bin/amahi-installer
+-hdactl: binary-without-manpage usr/bin/hda-alias
+-hdactl: binary-without-manpage usr/bin/hda-change-dns
+-hdactl: binary-without-manpage usr/bin/hda-change-gw
+-hdactl: binary-without-manpage usr/bin/hda-install
+-hdactl: binary-without-manpage usr/bin/hda-install-file
+-hdactl: binary-without-manpage usr/bin/hda-install-gem
+-hdactl: binary-without-manpage usr/bin/hda-php-zone-change
+-hdactl: binary-without-manpage usr/bin/hda-register-apps
+-hdactl: binary-without-manpage usr/bin/hda-settings
+-hdactl: binary-without-manpage usr/bin/hdactl
+-hdactl: binary-without-manpage usr/bin/hdactl-hup
+-
+diff --git a/platform/hdactl/debian/rules b/platform/hdactl/debian/rules
+index b2f96f7..91cc75f 100755
+--- a/platform/hdactl/debian/rules
++++ b/platform/hdactl/debian/rules
+@@ -4,9 +4,9 @@
+ export DH_VERBOSE=1
+ 
+ override_dh_auto_build:
+-	make hdactl-hup
++	make hda-ctl-hup
+ 	dh_auto_install
+ override_dh_installinit:
+-	dh_installinit --no-start --name=hdactl
++	dh_installinit --no-start --name=hda-ctl
+ 	dh_installinit --no-start --name=amahi-installer
+ 
+diff --git a/platform/hdactl/hda-alias b/platform/hdactl/hda-alias
+index 0b087d5..f766fe9 100755
+--- a/platform/hdactl/hda-alias
++++ b/platform/hdactl/hda-alias
+@@ -58,8 +58,8 @@ sub get_db_settings {
+ 	}
+ }
+ 
+-sub do_hdactl_hup {
+-	system("hdactl-hup");
++sub do_hda_ctl_hup {
++	system("hda-ctl-hup");
+ }
+ 
+ sub do_add {
+@@ -80,7 +80,7 @@ sub do_add {
+ 	$sth = $dbh->prepare("INSERT INTO dns_aliases (name, address) values ('$alias', '')");
+ 	$sth->execute();
+ 	# FIXME - check for errors.
+-	&do_hdactl_hup();
++	&do_hda_ctl_hup();
+ }
+ 
+ sub do_remove {
+@@ -90,7 +90,7 @@ sub do_remove {
+ 
+ 	my $sth = $dbh->prepare("DELETE FROM dns_aliases where name = '$alias'");
+ 	$sth->execute();
+-	&do_hdactl_hup();
++	&do_hda_ctl_hup();
+ }
+ 
+ sub usage {
+diff --git a/platform/hdactl/hda-change-dns b/platform/hdactl/hda-change-dns
+index 917728e..7f8886c 100755
+--- a/platform/hdactl/hda-change-dns
++++ b/platform/hdactl/hda-change-dns
+@@ -76,8 +76,8 @@ sub DisconnectFromDatabase
+         or warn " Disconnection failed: $DBI::errstr\n";
+ }
+ 
+-# Restart hdactl and other services related to networking
++# Restart hda-ctl and other services related to networking
+ sub RestartServices
+ {
+-	system("hdactl-hup");
++	system("hda-ctl-hup");
+ }
+diff --git a/platform/hdactl/hda-change-gw b/platform/hdactl/hda-change-gw
+index ea7a20c..f1513f3 100755
+--- a/platform/hdactl/hda-change-gw
++++ b/platform/hdactl/hda-change-gw
+@@ -92,13 +92,13 @@ sub DisconnectFromDatabase
+         or warn " Disconnection failed: $DBI::errstr\n";
+ }
+ 
+-# Restart hdactl and other services related to networking
++# Restart hda-ctl and other services related to networking
+ sub RestartServices
+ {
+-	system("hdactl-hup");
++	system("hda-ctl-hup");
+ 	sleep 2;
+ 	system("service network restart");
+ 	sleep 2;
+-	system("hdactl-hup");
++	system("hda-ctl-hup");
+ 	print "It is strongly recommended that you reboot all systems on your network at this point.\n";
+ }
+diff --git a/platform/hdactl/hdactl b/platform/hdactl/hda-ctl
+similarity index 97%
+rename from platform/hdactl/hdactl
+rename to platform/hdactl/hda-ctl
+index 4f0f15d..125d22c 100755
+--- a/platform/hdactl/hdactl
++++ b/platform/hdactl/hda-ctl
+@@ -3,7 +3,6 @@
+ # Author: Carlos Puchol <cpg at amahi dot org>
+ # This code is property and copyright of Amahi Inc.
+ # It's licensed under the GNU GPL V2 License
+-# $Id: hdactl 84 2005-09-25 06:01:30Z cpg $
+ ######################################################################
+ 
+ use strict;
+@@ -17,14 +16,14 @@ use IO::Handle;
+ use IO::File;
+ use Socket;
+ 
+-# these variables can be customized in /etc/hdactl.conf
++# these variables can be customized in /etc/hda-ctl.conf
+ # to set default settings in the conf file, you can do things like:
+ # $DEVICE = "eth0";
+ # it's full perl, so do NOT break it!
+ # note that if these settings are in the database, those always take priority when the program starts
+ our ($DEVICE, $NETMASK_SIZE, $NET_START, $DYN_LO, $DYN_HI, $USE_OPENDNS_SECONDARY);
+ 
+-my $conf_file = "/etc/hdactl.conf";
++my $conf_file = "/etc/hda-ctl.conf";
+ do $conf_file if -e $conf_file;
+ 
+ # pick up the default route device
+@@ -51,9 +50,9 @@ my $DATABASE_PASSWORD = "AmahiHDARulez";
+ our($opt_d, $opt_h);
+ getopts('dh');
+ 
+-my $pidfile = "/var/run/hdactl.pid";
++my $pidfile = "/var/run/hda-ctl.pid";
+ my $period = 600; # run period, in seconds
+-my $cmdfile = "/var/run/hdactl/notify";
++my $cmdfile = "/var/run/hda-ctl/notify";
+ 
+ my $platform = "unknown";
+ my $named_user;
+@@ -244,7 +243,7 @@ sub print_named_conf {
+ 		$extdns2 .= ";";
+ 	}
+ 
+-	printf $hda "# automatically generated file by hdactl\n";
++	printf $hda "# automatically generated file by hda-ctl\n";
+ 	printf $hda "options {\n";
+ 	printf $hda "\tlisten-on-v6 port 53 { ::1; };\n";
+ 	printf $hda "\tdirectory \"/var/named\";\n";
+@@ -601,7 +600,7 @@ sub print_fedora_network {
+ 	open (my $IFCFG, "< $ifcfg") or &logdie("cannot open '$ifcfg' for reading: $!");
+ 	while (<$IFCFG>) {
+ 		next if /IPADDR|NETMASK|GATEWAY|DNS1|DNS2|SEARCH|DOMAIN|BOOTPROTO|NM_CONTROLLED|ONBOOT/;
+-		next if /generated by hdactl/;
++		next if /generated by hda-ctl/;
+ 		$temp_fh->syswrite($_);
+ 	}
+ 	close $IFCFG;
+@@ -611,7 +610,7 @@ sub print_fedora_network {
+ 	# Write out the new file from the temporary file handle
+ 	$temp_fh->sysseek(0, 0);
+ 	my $data = '';
+-	my $header = "# generated by hdactl on " . strftime("%Y-%m-%d %H:%M:%S", localtime) . " / " . $ifcfg_idx++;
++	my $header = "# generated by hda-ctl on " . strftime("%Y-%m-%d %H:%M:%S", localtime) . " / " . $ifcfg_idx++;
+ 	$ifcfg_fh->syswrite($data) while $temp_fh->sysread($data, 1024);
+ 	$ifcfg_fh->syswrite("IPADDR=$net.$self\nNETMASK=$netmask\nGATEWAY=$net.$gw\nDNS1=$net.$self\nDNS2=$net.$self\n");
+ 	$ifcfg_fh->syswrite("SEARCH=$domain\nDOMAIN=$domain\nBOOTPROTO=none\nNM_CONTROLLED=no\nONBOOT=yes\n$header\n");
+@@ -652,7 +651,7 @@ sub print_debian_network {
+ 	my $ifcfg_fh=IO::File->new("> $ifcfg") or &logdie("cannot open file $ifcfg: $!");
+ 	$ifcfg_fh->sysseek(0, 0);
+ 
+-	my $header = "# Generated by hdactl on " . strftime("%Y-%m-%d %H:%M:%S", localtime) . " / " . $ifcfg_idx++;
++	my $header = "# Generated by hda-ctl on " . strftime("%Y-%m-%d %H:%M:%S", localtime) . " / " . $ifcfg_idx++;
+         $ifcfg_fh->syswrite("$header\n" .
+                             "auto lo $device\n\n" .
+                             "iface lo inet loopback\n\n" .
+@@ -798,7 +797,7 @@ sub fork_daemon {
+ 	open(STDOUT, ">/dev/null");
+ 	open(STDERR, ">/dev/null");
+ 	open(STDIN,  "</dev/null");
+-	mkdir("/var/run/hdactl");
++	mkdir("/var/run/hda-ctl");
+ 
+ 	&write_pid ();
+ }
+@@ -1053,7 +1052,7 @@ sub fork_command_fifo {
+ }
+ 
+ sub usage {
+-	printf "usage: hdactl [-d]\n";
++	printf "usage: hda-ctl [-d]\n";
+ 	printf "\t-d: dump files in current directory and exit\n";
+ 
+ 	exit (0);
+@@ -1109,7 +1108,7 @@ sub main {
+ 	# dump mode exits after it's done
+ 	&dump_mode() if (defined($opt_d));
+ 
+-	&log ("starting hdactl v$version.");
++	&log ("starting hda-ctl v$version.");
+ 
+ 	&basic_checks ();
+ 
+@@ -1146,7 +1145,7 @@ sub main {
+ 
+ 	} while (!$caught_term);
+ 
+-	&log ("caught SIGTERM: exiting hdactl v$version.") if $caught_term;
++	&log ("caught SIGTERM: exiting hda-ctl v$version.") if $caught_term;
+ 	&unlink_files();
+ 	kill('TERM', $command_processor_pid);
+ 
+diff --git a/platform/hdactl/hdactl-hup.c b/platform/hdactl/hda-ctl-hup.c
+similarity index 93%
+rename from platform/hdactl/hdactl-hup.c
+rename to platform/hdactl/hda-ctl-hup.c
+index 1f35073..4b902cb 100644
+--- a/platform/hdactl/hdactl-hup.c
++++ b/platform/hdactl/hda-ctl-hup.c
+@@ -14,7 +14,7 @@
+ // License along with this program; if not, write to the Amahi
+ // team at http://www.amahi.org/ under "Contact Us."
+ 
+-/* signal the hdactl process */
++/* signal the hda-ctl process */
+ /* exits with 0 if it works, -1 if not */
+ 
+ #include <stdlib.h>
+@@ -30,7 +30,7 @@
+ 
+ int main (int argc, char *argv[])
+ {
+-	int fd = open ("/var/run/hdactl.pid", O_RDONLY);
++	int fd = open ("/var/run/hda-ctl.pid", O_RDONLY);
+ 
+ 	if (fd < 0) exit (-1);
+ 
+diff --git a/platform/hdactl/hdactl.initscript b/platform/hdactl/hda-ctl.initscript
+similarity index 72%
+rename from platform/hdactl/hdactl.initscript
+rename to platform/hdactl/hda-ctl.initscript
+index ded4fd0..297443e 100755
+--- a/platform/hdactl/hdactl.initscript
++++ b/platform/hdactl/hda-ctl.initscript
+@@ -1,11 +1,11 @@
+ #!/bin/sh
+ #
+-# hdactl      This shell script takes care of starting and stopping hdactl.
++# hda-ctl      This shell script takes care of starting and stopping hda-ctl.
+ #
+ # chkconfig:    345 65 35
+-# description:  hdactl provides support for dynamically updating DHCP/DNS services
+-# processname:  hdactl
+-# config:       /etc/sysconfig/hdactl
++# description:  hda-ctl provides support for dynamically updating DHCP/DNS services
++# processname:  hda-ctl
++# config:       /etc/sysconfig/hda-ctl
+ 
+ # Source function library.
+ . /etc/rc.d/init.d/functions
+@@ -16,9 +16,9 @@
+ # Check that networking is up.
+ [ "$NETWORKING" = "no" ] && exit 0
+ 
+-. /etc/sysconfig/hdactl
++. /etc/sysconfig/hda-ctl
+ 
+-exec="/usr/bin/hdactl"
++exec="/usr/bin/hda-ctl"
+ prog=$(basename $exec)
+ lockfile=/var/lock/subsys/$prog
+ 
+@@ -26,12 +26,12 @@ start() {
+     if [ -f $lockfile ]; then
+ 	return 0
+     fi
+-    if [ ! -e /var/cache/hdactl.cache ]; then
+-	logger "hdactl: this hda has not been completely installed; exiting"
++    if [ ! -e /var/cache/hda-ctl.cache ]; then
++	logger "hda-ctl: this hda has not been completely installed; exiting"
+ 	return 0
+     fi
+     echo -n $"Starting $prog: "
+-    daemon $exec $HDACTL_OPTIONS
++    daemon $exec $HDA_CTL_OPTIONS
+     retval=$?
+     echo
+     [ $retval -eq 0 ] && touch $lockfile
+diff --git a/platform/hdactl/hdactl.initscript.debian b/platform/hdactl/hda-ctl.initscript.debian
+similarity index 97%
+rename from platform/hdactl/hdactl.initscript.debian
+rename to platform/hdactl/hda-ctl.initscript.debian
+index c2b8b9b..46c081f 100755
+--- a/platform/hdactl/hdactl.initscript.debian
++++ b/platform/hdactl/hda-ctl.initscript.debian
+@@ -1,6 +1,6 @@
+ #!/bin/sh
+ #
+-# hdactl init.d script with LSB support.
++# hda-ctl init.d script with LSB support.
+ #
+ # Copyright (c) 2009 Amahi Team.
+ #
+@@ -20,7 +20,7 @@
+ # Suite 330, Boston, MA 02111-1307 USA
+ #
+ ### BEGIN INIT INFO
+-# Provides:          hdactl
++# Provides:          hda-ctl
+ # Required-Start:    $network
+ # Required-Stop:
+ # Should-Start:
+@@ -33,15 +33,15 @@
+ 
+ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+ 
+-DAEMON=/usr/bin/hdactl
+-NAME=hdactl
++DAEMON=/usr/bin/hda-ctl
++NAME=hda-ctl
+ DESC="Amahi HDA daemon"
+ LOGDIR=/var/log/hda  # Revisit this.
+ 
+ PIDFILE=/var/run/$NAME.pid
+ 
+ test -x $DAEMON || exit 0
+-test  ! -e /var/cache/hdactl.cache && logger "hdactl: amahi has not been completely installed; exiting" && exit 0
++test  ! -e /var/cache/hda-ctl.cache && logger "hda-ctl: amahi has not been completely installed; exiting" && exit 0
+ 
+ . /lib/lsb/init-functions
+ 
+diff --git a/platform/hdactl/hdactl.spec b/platform/hdactl/hda-ctl.spec
+similarity index 79%
+rename from platform/hdactl/hdactl.spec
+rename to platform/hdactl/hda-ctl.spec
+index 2bcd1b3..7d03b68 100644
+--- a/platform/hdactl/hdactl.spec
++++ b/platform/hdactl/hda-ctl.spec
+@@ -1,8 +1,8 @@
+-Name:           hdactl
++Name:           hda-ctl
+ Version: 4.2.3
+ Release:        1
+ 
+-Summary:        hdactl is the Amahi HDA daemon.
++Summary:        hda-ctl is the Amahi HDA daemon.
+ 
+ Group:          System Environment/Daemons
+ License:        GPL
+@@ -26,12 +26,12 @@ BuildRequires:      gcc
+ %define debug_package %{nil}
+ 
+ %description
+-hdactl is the Amahi HDA daemon process.
++hda-ctl is the Amahi HDA daemon process.
+ 
+ %prep
+ %setup -q
+ 
+-make hdactl-hup
++make hda-ctl-hup
+ 
+ %build
+ 
+@@ -47,34 +47,34 @@ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/httpd/conf.d
+ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/sudoers.d
+ mkdir -p $RPM_BUILD_ROOT/var/hda
+ mkdir -p $RPM_BUILD_ROOT/var/hda/elevated
+-mkdir -p $RPM_BUILD_ROOT/usr/share/hdactl
++mkdir -p $RPM_BUILD_ROOT/usr/share/hda-ctl
+ mkdir -p $RPM_BUILD_ROOT/etc/skel/Desktop
+ mkdir -p $RPM_BUILD_ROOT/root/Desktop
+ 
+-install -m 755 -p hdactl hda-install $RPM_BUILD_ROOT%{_bindir}
++install -m 755 -p hda-ctl hda-install $RPM_BUILD_ROOT%{_bindir}
+ (cd $RPM_BUILD_ROOT%{_bindir} && ln -sf hda-install hda-new-install)
+ install -m 755 -p hda-settings hda-alias hda-install-file $RPM_BUILD_ROOT%{_bindir}
+ install -m 755 -p hda-register-apps hda-install-gem $RPM_BUILD_ROOT%{_bindir}
+ install -m 755 -p hda-change-gw hda-change-dns amahi-installer hda-php-zone-change hda-fix-sudoers $RPM_BUILD_ROOT%{_bindir}
+ # FIXME - remove after a while. added on Mon Feb 28 01:16:51 PST 2011
+ install -m 755 -p hda-upgrade-amahi5-to-amahi6 $RPM_BUILD_ROOT%{_bindir}
+-install -m 4755 -p hdactl-hup $RPM_BUILD_ROOT%{_bindir}
++install -m 4755 -p hda-ctl-hup $RPM_BUILD_ROOT%{_bindir}
+ install -m 0440 -p hda-privs $RPM_BUILD_ROOT%{_sysconfdir}/sudoers.d/amahi
+-install -p hdactl.initscript $RPM_BUILD_ROOT%{_initrddir}/hdactl
+-install -p hdactl.sysconfig $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/hdactl
+-install -p amahi-hda $RPM_BUILD_ROOT/usr/share/hdactl/amahi-hda
++install -p hda-ctl.initscript $RPM_BUILD_ROOT%{_initrddir}/hda-ctl
++install -p hda-ctl.sysconfig $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/hda-ctl
++install -p amahi-hda $RPM_BUILD_ROOT/usr/share/hda-ctl/amahi-hda
+ install -p amahi-installer.initscript $RPM_BUILD_ROOT%{_initrddir}/amahi-installer
+ 
+ rsync -Ca desktop-icons/ $RPM_BUILD_ROOT/etc/skel/Desktop
+ rsync -Ca desktop-icons/ $RPM_BUILD_ROOT/root/Desktop
+-rsync -Ca web-installer $RPM_BUILD_ROOT/usr/share/hdactl/
++rsync -Ca web-installer $RPM_BUILD_ROOT/usr/share/hda-ctl/
+ 
+ # periodic updates
+ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/cron.hourly
+ install -m 700 -p hda-update $RPM_BUILD_ROOT%{_sysconfdir}/cron.hourly
+ 
+ # base initialitation
+-rsync -Ca httpd $RPM_BUILD_ROOT/usr/share/hdactl/
++rsync -Ca httpd $RPM_BUILD_ROOT/usr/share/hda-ctl/
+ 
+ # calendar server non-destructive initialitation
+ mkdir -p $RPM_BUILD_ROOT/var/hda/calendar
+@@ -83,7 +83,7 @@ mkdir -p $RPM_BUILD_ROOT/var/hda/calendar/html
+ mkdir -p $RPM_BUILD_ROOT/var/hda/calendar/locks
+ 
+ # file server non-destructive initialization for later
+-rsync -Ca samba $RPM_BUILD_ROOT/usr/share/hdactl/
++rsync -Ca samba $RPM_BUILD_ROOT/usr/share/hda-ctl/
+ mkdir -p $RPM_BUILD_ROOT/var/hda/files/Backups
+ mkdir -p $RPM_BUILD_ROOT/var/hda/files/Books
+ mkdir -p $RPM_BUILD_ROOT/var/hda/files/Docs
+@@ -98,13 +98,13 @@ rm -rf $RPM_BUILD_ROOT
+ %pre
+ 
+ %post
+-/sbin/chkconfig --add hdactl
++/sbin/chkconfig --add hda-ctl
+ /sbin/chkconfig --add amahi-installer
+ 
+ mkdir -p /var/hda/files
+ 
+-if [[ -e /var/cache/hdactl.cache ]]; then
+-	if grep -q yes /var/cache/hdactl.cache ; then
++if [[ -e /var/cache/hda-ctl.cache ]]; then
++	if grep -q yes /var/cache/hda-ctl.cache ; then
+ 		(/usr/sbin/usermod -a -G users apache) || true
+ 
+ 		# FIXME - added on 3/24/09, to be removed after 5/30/09
+@@ -137,31 +137,33 @@ fi
+ 
+ if [ "$1" = 0 ]; then
+ 	# not an update, a complete uninstall
+-	/sbin/service hdactl stop > /dev/null 2>&1 || true
+-	/sbin/chkconfig --del hdactl
++	/sbin/service hda-ctl stop > /dev/null 2>&1 || true
++	/sbin/chkconfig --del hda-ctl
+ 	/sbin/chkconfig --del amahi-installer
+ else
+ 	# an update
+-	/sbin/service hdactl restart > /dev/null 2>&1 || true
++	/sbin/service hda-ctl restart > /dev/null 2>&1 || true
+ fi
+ 
+ %files
+ %defattr(-,root,root,-)
+ %{_bindir}/*
+-%{_sysconfdir}/sysconfig/hdactl
++%{_sysconfdir}/sysconfig/hda-ctl
+ %{_sysconfdir}/skel/Desktop
+ /root/Desktop/*
+ %{_sysconfdir}/cron.hourly/hda-update
+ %attr(0440, root, root)%{_sysconfdir}/sudoers.d/amahi
+ %ghost %attr(-, 500, 100) /var/hda/files
+-%attr(4755, root, root) %{_bindir}/hdactl-hup
+-%{_initrddir}/hdactl
++%attr(4755, root, root) %{_bindir}/hda-ctl-hup
++%{_initrddir}/hda-ctl
+ %{_initrddir}/amahi-installer
+-/usr/share/hdactl/*
++/usr/share/hda-ctl/*
+ /var/hda/elevated
+ %attr(755, apache, apache) /var/hda/calendar
+ 
+ %changelog
++* Sun Jan 13 2013 carlos puchol
++- rename to hda-ctl and start on f18 port
+ * Sun Mar 11 2007 carlos puchol
+ - added hda.repo, and many other improvements
+ * Sat Mar 10 2007 carlos puchol
+@@ -169,4 +171,4 @@ fi
+ * Sat Dec 09 2006 carlos puchol
+ - initial file
+ * Tue Feb 20 2006 carlos puchol
+-- add hdactl-hup, with uid
++- add hda-ctl-hup, with uid
+diff --git a/platform/hdactl/hda-ctl.sysconfig b/platform/hdactl/hda-ctl.sysconfig
+new file mode 100644
+index 0000000..8efc73a
+--- /dev/null
++++ b/platform/hdactl/hda-ctl.sysconfig
+@@ -0,0 +1,4 @@
++#
++# hda-ctl service options
++#
++# HDA_CTL_OPTIONS=""
+diff --git a/platform/hdactl/hda-install b/platform/hdactl/hda-install
+index 7effec0..2f1624f 100644
+--- a/platform/hdactl/hda-install
++++ b/platform/hdactl/hda-install
+@@ -377,7 +377,7 @@ def do_restart_network
+ 	do_system_silent "killall dhclient"
+ 	sleep 1
+ 	## generate the conf files
+-	#do_system_silent "service hdactl start"
++	#do_system_silent "service hda-ctl start"
+ 	## stop the net and related services
+ 	#do_system_silent "service " + NETWORK_SERVERNAME + " stop"
+ 	#sleep 1
+@@ -388,9 +388,9 @@ def do_restart_network
+ 	#puts "Network restart done."
+ 	#sleep 1
+ 	#puts "Starting network services ..."
+-	#do_system_silent "service hdactl stop"
++	#do_system_silent "service hda-ctl stop"
+ 	#sleep 1
+-	#do_system_silent "service hdactl start"
++	#do_system_silent "service hda-ctl start"
+ 	#sleep 2
+ 	do_system_silent "service " + HTTPD_SERVERNAME + " start"
+ 	#puts "Network services started."
+@@ -398,7 +398,7 @@ end
+ 
+ def do_samba
+ 	puts "Configuring Samba ... "
+-	substitute "/usr/share/hdactl/samba/", "/etc/samba/"
++	substitute "/usr/share/hda-ctl/samba/", "/etc/samba/"
+ 	puts "Samba install done."
+ end
+ 
+@@ -408,7 +408,7 @@ end
+ 
+ def do_httpd
+ 	puts "Installing httpd ... "
+-	substitute "/usr/share/hdactl/httpd/", "/etc/httpd/conf.d/"
++	substitute "/usr/share/hda-ctl/httpd/", "/etc/httpd/conf.d/"
+ 	unless in_file?(HTTPD_ENVFILE, 'umask')
+ 		File.open(HTTPD_ENVFILE, "a+") { |file| file.puts "\numask 002\n" }
+ 	end
+@@ -420,7 +420,7 @@ def start_all_services
+ 	puts "Starting services ... "
+ 
+ 	# NOTE: monit must be the last one, to prevent race conditions
+-	services_start = [ 'hdactl', 'ddclient', HTTPD_SERVERNAME, DHCPD_SERVERNAME, NETWORK_SERVERNAME,
++	services_start = [ 'hda-ctl', 'ddclient', HTTPD_SERVERNAME, DHCPD_SERVERNAME, NETWORK_SERVERNAME,
+ 	NAMED_SERVERNAME, MYSQL_SERVERNAME, SMB_SERVERNAME, NMB_SERVERNAME, 'monit', 'hddtemp']
+ 
+ 	if fedora? or centos?
+@@ -490,7 +490,7 @@ def get_os_version
+ end
+ 
+ # WARNING-cpg: this is needed to differentiate OSs and it makes
+-# hdactl require redhat-lsb in Fedora. However I do not like that
++# hda-ctl require redhat-lsb in Fedora. However I do not like that
+ # redhat-lsb requires 50MB of packages when this can be
+ # determined in a MUCH simpler way (e.g. /etc/issue)!
+ # So we need to fix this first!
+@@ -767,7 +767,7 @@ end
+ 
+ def mark_as_installed
+ 
+-	f = "/var/cache/hdactl.cache"
++	f = "/var/cache/hda-ctl.cache"
+ 	file = nil
+ 	begin
+ 		file = File.new f, "w"
+@@ -986,7 +986,7 @@ def do_full_install(hda)
+ 	end
+ 
+ 	# instantiate /etc/sysconfig/amahi-hda
+-	substitute "/usr/share/hdactl/amahi-hda", "/etc/sysconfig/amahi-hda"
++	substitute "/usr/share/hda-ctl/amahi-hda", "/etc/sysconfig/amahi-hda"
+ 
+ 	# lockdown f12 user install of software
+ 	# do_fedora12_lockdown
+@@ -1340,7 +1340,7 @@ def do_basic_checks
+ 		unless g
+ 			(1..3).each do
+ 				do_system_silent "service monit stop"
+-				do_system_silent "service hdactl stop"
++				do_system_silent "service hda-ctl stop"
+ 				do_system_silent "service " + DHCPD_SERVERNAME + " stop"
+ 				do_system_silent "killall dhclient"
+ 				do_system_silent "service " + NAMED_SERVERNAME + " stop"
+diff --git a/platform/hdactl/hda-update b/platform/hdactl/hda-update
+index 0bc8d42..d0ab041 100755
+--- a/platform/hdactl/hda-update
++++ b/platform/hdactl/hda-update
+@@ -3,7 +3,7 @@
+ 
+ exec >> /var/log/hda-updates.log 2>&1
+ 
+-if ! grep -q yes /var/cache/hdactl.cache
++if ! grep -q yes /var/cache/hda-ctl.cache
+ then
+ 	echo "===================================================="
+ 	echo "system not installed yet at time `date`"
+@@ -23,10 +23,10 @@ for i in 1 2 3; do
+ 	if grep -q Ubuntu /proc/version
+ 	then
+ 		apt-get update
+-		apt-get -y install hdactl '^hda-.*' '^amahi-.*'
++		apt-get -y install '^hda-.*' '^amahi-.*'
+ 	else
+-		yum -y install 'hda-*' 'hdactl'
+-		yum -y update 'hda-*' 'hdactl' 'amahi-*' && exit 0
++		yum -y install 'hda-*'
++		yum -y update 'hda-*' 'amahi-*' && exit 0
+ 	fi
+ done
+ 
+diff --git a/platform/hdactl/hdactl.sysconfig b/platform/hdactl/hdactl.sysconfig
+deleted file mode 100644
+index 489d01a..0000000
+--- a/platform/hdactl/hdactl.sysconfig
++++ /dev/null
+@@ -1,4 +0,0 @@
+-#
+-# hdactl service options
+-#
+-# HDACTL_OPTIONS=""
+diff --git a/platform/hdactl/web-installer/install-server b/platform/hdactl/web-installer/install-server
+index 4448c46..ff75ceb 100755
+--- a/platform/hdactl/web-installer/install-server
++++ b/platform/hdactl/web-installer/install-server
+@@ -22,7 +22,7 @@ require 'yaml'
+ 
+ # DEBUG: this is for development only
+ #ROOT_DIR = File.dirname(__FILE__)
+-ROOT_DIR = "/usr/share/hdactl/web-installer"
++ROOT_DIR = "/usr/share/hda-ctl/web-installer"
+ require File.join(ROOT_DIR, "config.rb")
+ 
+ class AmahiInstaller < Sinatra::Base
+diff --git a/platform/hdactl/web-installer/processor.rb b/platform/hdactl/web-installer/processor.rb
+index 2672741..c810e6c 100755
+--- a/platform/hdactl/web-installer/processor.rb
++++ b/platform/hdactl/web-installer/processor.rb
+@@ -21,7 +21,7 @@
+ #
+ 
+ require 'fileutils'
+-ROOT_DIR = "/usr/share/hdactl/web-installer"
++ROOT_DIR = "/usr/share/hda-ctl/web-installer"
+ require File.join(ROOT_DIR, "config.rb")
+ 
+ PROGRESS_PER_LINE = 3
+diff --git a/platform/platform/.gitignore b/platform/platform/.gitignore
+index 10b1bb7..7a9cad0 100644
+--- a/platform/platform/.gitignore
++++ b/platform/platform/.gitignore
+@@ -1,3 +1,2 @@
+-hdactl-hup
+ release/*
+ html/log/fastcgi.crash.log
+diff --git a/platform/platform/debian/control b/platform/platform/debian/control
+index 72f19c7..e124301 100644
+--- a/platform/platform/debian/control
++++ b/platform/platform/debian/control
+@@ -8,7 +8,7 @@ Homepage: http://www.amahi.org/
+ 
+ Package: hda-platform
+ Architecture: all
+-Depends: hdactl, apache2, libapache2-mod-fcgid, ruby, rake, libopenssl-ruby1.8, libldap-ruby1.8, libmysql-ruby1.8, libfcgi-ruby1.8,libyaml-ruby,libzlib-ruby,ruby-dev,rubygems,libgruff-ruby,libgd-ruby, rails, patch, hddtemp, ntpdate, ${misc:Depends}
++Depends: hda-ctl, apache2, libapache2-mod-fcgid, ruby, rake, libopenssl-ruby1.8, libldap-ruby1.8, libmysql-ruby1.8, libfcgi-ruby1.8,libyaml-ruby,libzlib-ruby,ruby-dev,rubygems,libgruff-ruby,libgd-ruby, rails, patch, hddtemp, ntpdate, ${misc:Depends}
+ Description: Amahi Home Digital Assistant web platform
+  The Amahi Home Server is more than what you'd expect from a GNU/Linux
+  home server. We call it "Home Digital Assistant" or HDA.  The Amahi
+diff --git a/platform/platform/debian/hda-platform.postinst b/platform/platform/debian/hda-platform.postinst
+index 2f0f5ea..7439539 100644
+--- a/platform/platform/debian/hda-platform.postinst
++++ b/platform/platform/debian/hda-platform.postinst
+@@ -26,8 +26,8 @@ case "$1" in
+         if [ -z "$2" ]; then
+             echo "Deploying HDA platform"
+ 
+-            if [ -e /var/cache/hdactl.cache ]; then
+-                    if grep -q yes /var/cache/hdactl.cache ; then
++            if [ -e /var/cache/hda-ctl.cache ]; then
++                    if grep -q yes /var/cache/hda-ctl.cache ; then
+                             # FIXME - ugh - this gem install was inserted in 2/10 and can be
+                             # removed once the installer and dependencies are all clear
+                             (hda-install-gem rails 2.3.4; \
+@@ -109,7 +109,7 @@ case "$1" in
+             chmod 666 /var/hda/platform/html/log/development.log
+             chown -R 1000:users /var/hda/files
+ 
+-            grep -q hdactl /etc/apache2/apache2.conf || echo "Include /usr/share/hdactl/httpd/" >> /etc/apache2/apache2.conf
++            grep -q hda-ctl /etc/apache2/apache2.conf || echo "Include /usr/share/hda-ctl/httpd/" >> /etc/apache2/apache2.conf
+             # run apache as apache.users not as www-data.www-data
+             sed -i -e "s/^export APACHE_RUN_USER=www-data/export APACHE_RUN_USER=apache/" /etc/apache2/envvars
+             sed -i -e "s/^export APACHE_RUN_GROUP=www-data/export APACHE_RUN_GROUP=users/" /etc/apache2/envvars
+@@ -132,7 +132,7 @@ case "$1" in
+ 
+         chmod 644 /var/log/syslog;
+ 
+-        (service hdactl restart || true) > /dev/null 2>&1
++        (service hda-ctl restart || true) > /dev/null 2>&1
+         (service apache2 reload || true) > /dev/null 2>&1
+         # this line is for debian, service samba does not exist for ubuntu
+         (service samba reload || true) > /dev/null 2>&1
+diff --git a/platform/platform/hda-platform.spec b/platform/platform/hda-platform.spec
+index 098ec38..3076e43 100644
+--- a/platform/platform/hda-platform.spec
++++ b/platform/platform/hda-platform.spec
+@@ -13,7 +13,7 @@ Source:         %{name}-%{version}.tar.gz
+ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+ BuildArch:      noarch
+ 
+-Requires: hdactl >= 4.1.0
++Requires: hda-ctl >= 4.1.0
+ Requires: ruby ruby-mysql ruby-libs ruby-devel eruby
+ Requires: ruby-irb ruby-racc ruby-rdoc eruby-libs ruby-ri
+ Requires: rubygems >= 1.3.1
+@@ -76,8 +76,8 @@ rm -rf $RPM_BUILD_ROOT
+ 
+ %post
+ 
+-if [[ -e /var/cache/hdactl.cache ]]; then
+-	if grep -q yes /var/cache/hdactl.cache ; then
++if [[ -e /var/cache/hda-ctl.cache ]]; then
++	if grep -q yes /var/cache/hda-ctl.cache ; then
+ 		# FIXME - ugh - this gem install was inserted in 2/10 and can be
+ 		# removed once the installer and dependencies are all clear
+ 		(hda-install-gem rails 2.3.4; \
+@@ -100,7 +100,7 @@ if [ "$1" = 0 ]; then
+ 	true
+ else
+ 	# an update
+-        (/sbin/service hdactl reload || true) &> /dev/null
++        (/sbin/service hda-ctl reload || true) &> /dev/null
+         (/sbin/service httpd reload || true) &> /dev/null
+ 	(/sbin/service smb reload || true) &> /dev/null
+ 	(/sbin/service nmb reload || true) &> /dev/null
+diff --git a/platform/platform/hda-usermap b/platform/platform/hda-usermap
+index 8bcd35d..bcbf75a 100755
+--- a/platform/platform/hda-usermap
++++ b/platform/platform/hda-usermap
+@@ -2,8 +2,7 @@
+ ######################################################################
+ # Author: Carlos Puchol <cpg at amahi dot org>
+ # This code is property and copyright of Amahi Inc.
+-# It's licensed under the GNU GPL V2 License
+-# $Id: hdactl 84 2005-09-25 06:01:30Z cpg $
++# It's licensed under the GNU AGPL v3 License
+ ######################################################################
+ 
+ use strict;
+diff --git a/platform/platform/html/app/controllers/network_controller.rb b/platform/platform/html/app/controllers/network_controller.rb
+index ea3d4d8..2ab5678 100644
+--- a/platform/platform/html/app/controllers/network_controller.rb
++++ b/platform/platform/html/app/controllers/network_controller.rb
+@@ -88,7 +88,7 @@ class NetworkController < ApplicationController
+ 		lease = 86400 if lease > 86400
+ 		s.update_attribute(:value, value)
+ 		# FIXME - only dhcpd needs to be set, and only if enabled!
+-		system "hdactl-hup"
++		system "hda-ctl-hup"
+ 		# prevent the fast clickers from bringing down the house
+ 		sleep 2
+ 		render :text => "#{s.value}"
+@@ -104,7 +104,7 @@ class NetworkController < ApplicationController
+ 		s.update_attribute(:value, gw.to_s)
+ 		# FIXME - need to change the alias for "router"!
+ 		# FIXME - this needs to be enabled
+-		# system "hdactl-hup"
++		# system "hda-ctl-hup"
+ 	end
+ 
+ private
+diff --git a/platform/platform/html/app/controllers/setup_controller.rb b/platform/platform/html/app/controllers/setup_controller.rb
+index eb33b03..cbf3482 100644
+--- a/platform/platform/html/app/controllers/setup_controller.rb
++++ b/platform/platform/html/app/controllers/setup_controller.rb
+@@ -269,16 +269,16 @@ protected
+ 
+ 	def versions
+ 		platform = ""
+-		hdactl = ""
++		hda-ctl = ""
+ 		if Platform.fedora?
+-			open("|rpm -q hda-platform hdactl") do |f|
++			open("|rpm -q hda-platform hda-ctl") do |f|
+ 				while f.gets
+ 					line = $_
+ 					if (line =~ /hda-platform-(.*).noarch/)
+ 						platform = $1
+ 					end
+-					if (line =~ /hdactl-([0-9\.\-]+)\.\w+/)
+-						hdactl = $1
++					if (line =~ /hda-ctl-([0-9\.\-]+)\.\w+/)
++						hda-ctl = $1
+ 					end
+ 				end
+ 			end
+@@ -290,16 +290,16 @@ protected
+ 					platform = $1
+ 				end
+ 			end
+-			open("|apt-cache show hdactl | grep Version") do |f|
++			open("|apt-cache show hda-ctl | grep Version") do |f|
+ 				f.gets
+ 				line = $_
+ 				if (line =~ /Version: (.*)/)
+-					hdactl = $1
++					hda-ctl = $1
+ 				end
+ 			end
+ 
+ 		end
+-		{ :platform => platform, :hdactl => hdactl }
++		{ :platform => platform, :hda_ctl => hda-ctl }
+ 	end
+ 
+ end
+diff --git a/platform/platform/html/app/models/alias.rb b/platform/platform/html/app/models/alias.rb
+index d290057..463793e 100644
+--- a/platform/platform/html/app/models/alias.rb
++++ b/platform/platform/html/app/models/alias.rb
+@@ -26,7 +26,7 @@ protected
+ 
+ 	def restart
+ 		# FIXME - only do named
+-		system("hdactl-hup");
++		system("hda-ctl-hup");
+ 	end
+ 
+ end
+diff --git a/platform/platform/html/app/models/host.rb b/platform/platform/html/app/models/host.rb
+index 42e7a5f..261cc20 100644
+--- a/platform/platform/html/app/models/host.rb
++++ b/platform/platform/html/app/models/host.rb
+@@ -24,6 +24,6 @@ protected
+ 
+ 	def restart
+ 		# FIXME - only do named
+-		system("hdactl-hup");
++		system("hda-ctl-hup");
+ 	end
+ end
+diff --git a/platform/platform/html/app/models/server.rb b/platform/platform/html/app/models/server.rb
+index f7ea296..421016e 100644
+--- a/platform/platform/html/app/models/server.rb
++++ b/platform/platform/html/app/models/server.rb
+@@ -37,7 +37,7 @@ class Server < ActiveRecord::Base
+ 		Server.create(:name => 'dhcp', :pidfile => Platform.file_name(:dhcpd_pid), :comment => I18n.t('dhcp_server'))
+ 		Server.create(:name => 'mysql', :pidfile => 'mysqld/mysqld.pid', :comment => I18n.t('mysql_database_server'))
+ 		Server.create(:name => 'smb', :pidfile => Platform.file_name(:samba_pid), :comment => I18n.t('file_server_samba'))
+-		Server.create(:name => 'hdactl', :comment => I18n.t('amahi_dyndns_updater'))
++		Server.create(:name => 'hda-ctl', :comment => I18n.t('amahi_dyndns_updater'))
+ 		Server.create(:name => 'greyhole', :comment => 'Greyhole')
+ 		r = "# WARNING - This file was automatically generated on #{Time.now}\n" \
+ 			"\nset daemon 30\n" \
+diff --git a/platform/platform/html/app/views/setting/_info.html.erb b/platform/platform/html/app/views/setting/_info.html.erb
+index 7bfe12e..c59ec7a 100644
+--- a/platform/platform/html/app/views/setting/_info.html.erb
++++ b/platform/platform/html/app/views/setting/_info.html.erb
+@@ -9,7 +9,7 @@
+ 	<tr><td>&nbsp;</td></tr>
+ 	<tr><td><%=t 'platform' %>:</td> <td><%= @version[:platform] %></td></tr>
+ 	<tr><td>&nbsp;</td></tr>
+-	<tr><td><%=t 'core' %>:</td> <td><%= @version[:hdactl] %></td></tr>
++	<tr><td><%=t 'core' %>:</td> <td><%= @version[:hda_ctl] %></td></tr>
+ 	<tr><td>&nbsp;</td></tr>
+ 	<tr><td><%=t 'uptime' %>:</td> <td><%= `uptime` %></td></tr>
+ </table>
+diff --git a/platform/platform/html/lib/command.rb b/platform/platform/html/lib/command.rb
+index 5450617..ba8c115 100644
+--- a/platform/platform/html/lib/command.rb
++++ b/platform/platform/html/lib/command.rb
+@@ -18,8 +18,8 @@ require 'socket'
+ 
+ class Command
+ 
+-	CMD_FIFO = "/tmp/.hdactl.s"
+-	HDACTL_PID = "/var/run/hdactl.pid"
++	CMD_FIFO = "/var/run/hda-ctl/notify"
++	HDA_CTL_PID = "/var/run/hda-ctl.pid"
+ 
+ 	@cmd = []
+ 
+@@ -30,7 +30,7 @@ class Command
+ 
+ 	def execute
+ 		return if @dummy_mode
+-		raise "hdactl does not appear to be running!" unless running?
++		raise "hda-ctl does not appear to be running!" unless running?
+ 		command = @cmd.join "\n"
+ 		f = UNIXSocket.open(CMD_FIFO)
+ 		f.send(command, 0)
+@@ -39,7 +39,7 @@ class Command
+ 	end
+ 
+ 	def run_now
+-		raise "hdactl does not appear to be running!" unless running?
++		raise "hda-ctl does not appear to be running!" unless running?
+ 		confirm = "done" # Digest::SHA1.hexdigest(Time.now.to_s.split(//).sort_by {rand}.join)
+ 		@cmd.push "confirm: #{confirm}\n"
+ 		command = @cmd.join "\n"
+@@ -64,7 +64,7 @@ class Command
+ private
+ 	def running?
+ 		begin
+-			f = File.open HDACTL_PID
++			f = File.open HDA_CTL_PID
+ 			s = f.readline
+ 			f.close
+ 			s.chomp!
+-- 
+1.8.1
+

@@ -1,0 +1,1419 @@
+#!/usr/bin/env ruby
+#
+# Amahi Home Server
+# Copyright (C) 2007-2009 Amahi Team
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License v3
+# (29 June 2007), as published in the COPYING file.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# file COPYING for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Amahi
+# team at http://www.amahi.org/ under "Contact Us."
+
+# final install and propagation of the hda settings
+
+require 'optparse'
+require 'uri'
+require 'open-uri'
+require 'net/http'
+require 'mysql'
+require 'tempfile'
+require 'ipaddr'
+
+$version = "4.2.3"
+
+# FIXME only eth0 supported for now - more hopefully in the future
+@network_device = "eth0"
+
+# FIXME - make this more flexible - or read it out
+DATABASE_NAME = "hda_production"
+DATABASE_USER = "amahihda"
+DATABASE_PASSWORD = "AmahiHDARulez"
+DATABASE_MAIN_USER = "root"
+DATABASE_MAIN_PASSWORD = "hda"
+GREYHOLE_DATABASE = "greyhole"
+
+OLDOUT = $stdout.dup
+
+@opt = ARGV.getopts("VfsdrDhnwmoyqi:p")
+
+# global variable
+@gems_list = {}
+
+def set_platform
+    issue = File.open("/etc/issue", "r");
+    line = issue.gets;
+    $platform = "unknown";
+    if ((line.include? "Ubuntu") or (line.include? "Debian"))
+        $platform = "debian";
+    end
+    if (line.include? "Fedora")
+        $platform = "fedora";
+    end
+    if (line.include? "CentOS")
+        $platform = "centos";
+    end
+end
+
+set_platform()
+
+def fedora?
+        $platform == "fedora";
+end
+
+def centos?
+        $platform == "centos";
+end
+
+def ubuntu?
+        $platform == "ubuntu";
+end
+
+def debian?
+        $platform == "debian";
+end
+
+def rpm_based?
+	fedora? or centos?
+end
+
+def deb_based?
+	ubuntu? or debian?
+end
+
+# platform specific constants
+
+if fedora? or centos?
+	DHCPD_SERVERNAME = 'dhcpd'
+	HTTPD_SERVERNAME = 'httpd'
+	HTTPD_ENVFILE = '/etc/sysconfig/httpd'
+	MYSQL_SERVERNAME = 'mysqld'
+	NAMED_SERVERNAME = 'named'
+	NETWORK_SERVERNAME = 'network'
+	NETWORKMANAGER_SERVERNAME = 'NetworkManager'
+	NMB_SERVERNAME = 'nmb'
+	SMB_SERVERNAME = 'smb'
+else
+	DHCPD_SERVERNAME = 'isc-dhcp-server'
+	HTTPD_SERVERNAME = 'apache2'
+	HTTPD_ENVFILE = '/etc/apache2/envvars'
+	MYSQL_SERVERNAME = 'mysql'
+	NAMED_SERVERNAME = 'bind9'
+	NETWORK_SERVERNAME = 'networking'
+	NETWORKMANAGER_SERVERNAME = 'network-manager'
+	# FIXME: change needed for debian: their service samba starts both smb and nmb
+	NMB_SERVERNAME = 'nmbd'
+	SMB_SERVERNAME = 'smbd'
+end
+
+# need to define it before we re-assign signals
+def signal_handler
+	caught_signal = 1
+
+	Signal.trap "HUP", "IGNORE"
+	Signal.trap "TERM", "IGNORE"
+	Signal.trap "INT", "IGNORE"
+	pid = $$
+	Process.kill "INT", -pid
+	Process.kill "TERM", -pid
+	sleep 1
+	Process.kill "KILL", -pid
+	exit
+end
+
+def autodetect_network
+	cmds = ["/sbin/ip", "/bin/ip", "/usr/bin/ip", "/usr/sbin/ip"]
+	cmd = cmds.select { |f| File.exist? f }.first
+
+	logfile = File.new "/root/ip-route.txt", "w"
+
+	IO.popen("#{cmd} route") do |f|
+		until f.eof?
+			line = f.gets
+			logfile.write line
+			if line =~ /^default via ([\d\.]+) dev (\w+)/
+				gatewayip = $1
+				device = $2
+				octets = gatewayip.split(/\./)
+				net = octets[0] + "." + octets[1] + "." + octets[2]
+				gw = octets[3]
+				logfile.close
+				return [net, gw, device]
+			end
+		end
+	end
+	logfile.close
+	[nil, nil, nil]
+end
+
+# Write the network information to the database
+def autoconfigure_network
+	net, gw, device = autodetect_network
+	if net and gw
+		if @database
+			sth = @database.prepare("UPDATE #{DATABASE_NAME}.settings SET value = ? WHERE settings.name = 'net' LIMIT 1 ;")
+			sth.execute(net)
+			sth = @database.prepare("UPDATE #{DATABASE_NAME}.settings SET value = ? WHERE settings.name = 'gateway' LIMIT 1 ;")
+			sth.execute(gw)
+		end
+		# set the device here from the existing setup!
+		@network_device = device
+		puts "Installer automatically determined that your router/gateway IP address is: #{net}.#{gw}, over #{device}"
+		puts "If this is incorrect, please report it, then run hda-change-gw after"
+		puts "installation is finished to set your gateway settings to the proper IP."
+	else
+		puts "WARNING: cannot autoconfigure the network!"
+	end
+end
+
+# global database handle for both functions below
+# FIXME - install the mysql gem first, then require it??
+@database = Mysql::init()
+
+@settings = {}
+
+@network_device = @opt['i'] || @network_device
+
+$file_ifcfg = "ifcfg-#{@network_device}"
+$ifcfg_idx = 1
+
+$net = nil
+$gateway = nil
+$gatewayip = nil
+
+# remote db content
+@system_configuration = nil;
+@system_configuration_length = 0
+
+$caught_signal  = 0
+
+Signal.trap("HUP", proc {signal_handler})
+Signal.trap("TERM", proc {signal_handler})
+Signal.trap("INT", proc {signal_handler})
+
+# FIXME - why does this cause system to always return -1??
+# Signal.trap("CHLD", "IGNORE")
+def db_connect
+	# connect to the database
+	begin
+		# args: hostname, username, password, database
+		@database.real_connect("localhost", DATABASE_USER, DATABASE_PASSWORD, DATABASE_NAME)
+	rescue Mysql::Error => e
+		puts "Error code: #{e.errno}"
+		puts "Error message: #{e.error}"
+		puts "Error SQLSTATE: #{e.sqlstate}" if e.respond_to?("sqlstate")
+		exit(-1)
+	end
+
+end
+
+def get_db_settings
+	sth = @database.query("SELECT Name, Value FROM settings")
+
+	sth.each do |row|
+		name = row[0]
+		value = row[1]
+		@settings[name] = value
+		puts "name = #{name}, value = #{value}" if @opt["D"]
+	end
+	sth.free
+end
+
+def clone_perm(i, o)
+	p = File.stat(i).mode & 07777
+	$stdout.printf "clone permissions #{i}/%03o -> #{o}", p if @opt["D"]
+	File.chmod p, o
+end
+
+def initialize_mysql
+	# configure mysql daemon - fail safe
+	do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} password '#{DATABASE_MAIN_PASSWORD}'"
+	# drop it first, force and silent, since most times it will not be there
+	do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} -f drop #{DATABASE_NAME}"
+	do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} create #{DATABASE_NAME}"
+	do_system_silent "echo \"GRANT ALL PRIVILEGES ON *.* TO '#{DATABASE_USER}'@'localhost' IDENTIFIED BY '#{DATABASE_PASSWORD}' WITH GRANT OPTION;\" | mysql -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD}"
+end
+
+def substitute_dir(dir_in, dir_out)
+	if !File.exists?(dir_out)
+		begin
+			FileUtils.mkdir dir_out
+		rescue
+			abort "cannot create '#{dir_out}': #{$!}"
+		end
+	end
+
+	abort "both '#{dir_in}' and '#{dir_out}' must be directories" unless File.directory?(dir_in) && File.directory?(dir_out)
+
+	# make sure we can read/write the destinaiton directory.
+	# FIXME: security hole until the end of this function!
+	# FIXME: there is probably a huge danger hidden here that stuff may
+	# accidentally/unintentionally get destroyed.
+	File.chmod 0777, dir_out if File.writable?(dir_out)
+
+	begin
+		files = Dir.entries(dir_in)
+		files.each do |file|
+			# skip dot and dot dot, to avoid infinite recursion
+			next if (file =~ /^\.$/ || file =~ /^\.\.$/)
+			fi = dir_in + "/" + file
+			fo = dir_out + "/" + file
+			substitute_dir fi, fo if File.directory?(fi)
+			substitute fi, fo if File.file?(fi)
+		end
+	rescue
+		abort "cannot open #{dir_in}: #{$!}"
+	end
+
+	clone_perm dir_in, dir_out
+end
+
+# create a common user/db/password for the greyhole app
+def initialize_greyhole
+	message "***************        TBD: Initialize storage pooling ... *******************"
+	return
+	message "Initializing Storage Pooling ..."
+	db = open "| mysql --user #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} 2>&1", "r+"
+	dbname = user = user_password = GREYHOLE_DATABASE
+	host = "localhost"
+	if db
+		db.puts "drop database if exists `#{dbname}`;"
+		db.puts "create database `#{dbname}`;"
+		db.puts "create user '#{user}'@'#{host}' IDENTIFIED BY '#{user_password}';"
+		db.puts "grant all privileges on `#{dbname}`.* to '#{user}'@'#{host}';"
+		db.puts "use greyhole;"
+		open("/usr/share/greyhole/schema-mysql.sql") do |f|
+			until (f.eof) do
+				db.puts f.readline
+			end
+		end
+		db.puts "quit"
+		db.flush
+		db.close
+	else
+		raise "cannot create greyole db!"
+	end
+	open("/etc/cron.weekly/greyhole", "w") do |f|
+		f.puts "#!/bin/sh\n/usr/bin/greyhole --fsck --email-report --dont-walk-metadata-store > /dev/null;\n"
+		f.puts "/usr/bin/greyhole --getuid > /tmp/greyhole.stats;\n"
+		f.puts "/usr/bin/greyhole --stats --json >> /tmp/greyhole.stats;\n"
+		f.puts "curl -s --data @/tmp/greyhole.stats https://api.amahi.org/api/greyhole > /dev/null;\n"
+	end
+end
+
+def substitute(file_in, file_out)
+	puts "substitute: #{file_in} -> #{file_out}" if @opt["D"]
+	# if it's a directory, go in and iterate
+	if File.directory?(file_in)
+		substitute_dir file_in, file_out
+		return
+	end
+
+	# make sure we can read/write the destination file.
+	# FIXME: security hole until the end of this function!
+	# FIXME: there is probably a huge danger hidden here that stuff may
+	# accidentally/unintentionally get destroyed.
+	File.chmod 0777, file_out if File.exists?(file_out) && File.writable?(file_out)
+
+	fin = fout = nil
+
+	begin
+		fin = File.new(file_in, "r")
+	rescue
+		abort "cannot open '#{file_in}' for reading"
+	end
+
+	begin
+		fout = File.new(file_out, "w")
+	rescue
+		abort "cannot open '#{file_out}' for writing"
+	end
+
+	netmask = @settings['netmask']
+	self_address = @settings['self-address']
+	domain = @settings['domain']
+	net = @settings['net']
+	nick = @settings['nick']
+	api_key = @settings['api-key']
+	uname = `uname -p`
+
+	arch_64 = "";
+	arch = "32";
+	if uname =~ /64/
+		arch = "64"
+		arch_64 = "64"
+	end
+
+	fin.readlines.each do |line|
+
+		line.gsub! "\@HDA_NETWORK\@", net
+		line.gsub! "\@HDA_SELF\@", self_address
+		line.gsub! "\@HDA_DOMAIN\@", domain
+		line.gsub! "\@HDA_NETMASK\@", netmask
+		line.gsub! "\@HDA_NICKNAME\@", nick
+		line.gsub! "\@HDA_API_KEY\@", api_key
+		line.gsub! "\@HDA_ARCH\@/", arch
+		line.gsub! "\@HDA_ARCH_64\@", arch_64
+
+		fout.print line
+	end
+
+	fin.close
+	fout.close
+
+	clone_perm file_in, file_out
+end
+
+def do_restart_network
+	#puts "Restarting the network ..."
+	# do_system_silent "chkconfig " + NETWORKMANAGER_SERVERNAME + " off"
+	# do_system_silent "service " + NETWORKMANAGER_SERVERNAME + " stop"
+	do_system_silent "killall dhclient"
+	sleep 1
+	## generate the conf files
+	#do_system_silent "service hdactl start"
+	## stop the net and related services
+	#do_system_silent "service " + NETWORK_SERVERNAME + " stop"
+	#sleep 1
+	#do_system_silent "service " = DHCPD_SERVERNAME + " stop"
+	do_system_silent "service " + NAMED_SERVERNAME + " stop"
+	#sleep 1
+	#do_system_silent "service " + NETWORK_SERVERNAME + " start"
+	#puts "Network restart done."
+	#sleep 1
+	#puts "Starting network services ..."
+	#do_system_silent "service hdactl stop"
+	#sleep 1
+	#do_system_silent "service hdactl start"
+	#sleep 2
+	do_system_silent "service " + HTTPD_SERVERNAME + " start"
+	#puts "Network services started."
+end
+
+def do_samba
+	puts "Configuring Samba ... "
+	substitute "/usr/share/hdactl/samba/", "/etc/samba/"
+	puts "Samba install done."
+end
+
+def in_file?(file, string)
+	! File.open(file){|file| file.grep(/#{string}/) }.empty?
+end
+
+def do_httpd
+	puts "Installing httpd ... "
+	substitute "/usr/share/hdactl/httpd/", "/etc/httpd/conf.d/"
+	unless in_file?(HTTPD_ENVFILE, 'umask')
+		File.open(HTTPD_ENVFILE, "a+") { |file| file.puts "\numask 002\n" }
+	end
+	system "usermod -g users -G apache apache 2>&1"
+	puts "HTTPD install done."
+end
+
+def start_all_services
+	puts "Starting services ... "
+
+	# NOTE: monit must be the last one, to prevent race conditions
+	services_start = [ 'hdactl', 'ddclient', HTTPD_SERVERNAME, DHCPD_SERVERNAME, NETWORK_SERVERNAME,
+	NAMED_SERVERNAME, MYSQL_SERVERNAME, SMB_SERVERNAME, NMB_SERVERNAME, 'monit', 'hddtemp']
+
+	if fedora? or centos?
+		services_stop = [ 'gpm', 'hplip', 'isdn', 'kudzu', 'sendmail',
+			'yum-updatesd', 'dhcrelay', 'ldap', 'iptables']
+	else
+		services_stop = [] # [ NETWORKMANAGER_SERVERNAME ]
+	end
+
+	if @opt[p]
+		services_stop << DHCPD_SERVERNAME
+	else
+		services_start << DHCPD_SERVERNAME
+	end
+
+	services_start.each do |service|
+		if fedora? or centos?
+			system "chkconfig --levels 2345 #{service} on 2>&1"
+		else
+			system "insserv #{service},start=2,3,4,5 2>&1"
+		end
+	end
+
+	puts "Services started."
+
+	puts "Stopping and disabling unused services ... "
+	services_stop.each do |service|
+		if fedora? or centos?
+			system "chkconfig --levels 2345 #{service} off 2>&1"
+		else
+			system "insserv -r #{service},start=2,3,4,5 2>&1"
+		end
+		system "service #{service} stop 2>&1"
+	end
+
+	puts "Stopping unused services done."
+end
+
+def start_service(service)
+	do_system "service #{service} start"
+end
+
+def get_os_version
+	if fedora? or centos?
+		if File.exists?('/etc/system-release')
+			file = nil
+			begin
+				file = File.new "/etc/system-release", "r"
+			rescue
+				return "cannot-open-sys-release-file"
+			end
+			return file.read.chomp()
+		end
+		"no-sys-release-file"
+	else
+		if File.exists?('/etc/issue.net')
+			file = nil
+			begin
+				file = File.new "/etc/issue.net", "r"
+			rescue
+				return "cannot-open-issue.net-file"
+			end
+			return file.read.chomp()
+		end
+		"no-issue.net-file"
+	end
+end
+
+# WARNING-cpg: this is needed to differentiate OSs and it makes
+# hdactl require redhat-lsb in Fedora. However I do not like that
+# redhat-lsb requires 50MB of packages when this can be
+# determined in a MUCH simpler way (e.g. /etc/issue)!
+# So we need to fix this first!
+def identify_os_broken
+	distro = "Unknown"
+	release = "Unknown"
+	d, r = open("|lsb_release -ir") { |f| f.readlines }
+	distro = $1 if d =~ /Distributor ID:\t(.*)\n$/
+	release = $1 if r =~ /Release:\t(.*)\n$/
+	[distro, release]
+end
+
+def get_arch
+	arch = ""
+	if fedora? or centos?
+		file = IO.popen("uname -i") { |file| arch = file.read.chomp }
+		arch = "cannot-run-uname-i" if $? != 0
+	else
+		# others use uname -m
+		file = IO.popen("uname -m") { |file| arch = file.read.chomp }
+		arch = "cannot-run-uname-m" if $? != 0
+	end
+
+	arch
+end
+
+def check_install_code(inst_code)
+	os = URI.escape(get_os_version)
+	arch = URI.escape(get_arch)
+
+	url = "http://api.amahi.org/install/#{inst_code}?os=#{os}&arch=#{arch}&ver=#{$version}"
+
+	@system_configuration = nil
+
+	message "Retrieving install code ..."
+
+	# get the settings remotely and update it on client
+	(1..3).each do
+		begin
+			@system_configuration = open(url, "User-Agent" => "ruby/#{RUBY_VERSION}").read
+		rescue
+			@system_configuration = nil
+		end
+		break if @system_configuration != nil
+	end
+
+	if @system_configuration == nil
+		g = open("http://www.yahoo.com/").read
+		if g != nil
+			message "ERROR: the amahi.org server may not be available. Try again later."
+			exit(-1)
+		end
+		do_system_silent "service " + NETWORK_SERVERNAME + " restart"
+
+		sleep 2
+		(1..3).each do
+			begin
+				@system_configuration = open(url).read
+			rescue
+				@system_configuration = nil
+			end
+			last if @system_configuration != nil
+		end
+		if @system_configuration == nil
+			message "ERROR: the installer cannot access the network to retrieve your HDAs settings."
+			message "\tPlease double check that the machine has network/internet access."
+			message "\tTry 'dhclient eth0' (as root) to configure your network interface."
+			exit(-1)
+		end
+	end
+
+	@system_configuration_length = @system_configuration.size
+
+	if @system_configuration =~ /^error: unknown code$/
+		puts @system_configuration
+		# message @system_configuration
+		message "ERROR: install code '#{inst_code}' is not a valid install code."
+		exit(-1)
+	elsif @system_configuration_length == 0
+		message "ERROR: the amahi.org server may not be available. Try again later or email support."
+		exit(-1)
+	end
+	message "Install code looks good"
+end
+
+def copy_remote_db_configuration(hda)
+
+	if @system_configuration_length == 0
+		abort "hda-install: ERROR: configuration for install code '" + hda + "' is empty."
+	end
+
+	begin
+		file = Kernel.open("| mysql -u #{DATABASE_USER} -p#{DATABASE_PASSWORD} #{DATABASE_NAME}", "w+")
+		file.puts @system_configuration
+		file.close
+	rescue
+		if ($@ =~ /^open/)
+			abort "cannot open mysql command : #{$!} \n #{$@} \n"
+		end
+		raise "cannot see settings file"
+	end
+end
+
+def do_db(install_code)
+	puts "Syncing settings for #{install_code} ... "
+	copy_remote_db_configuration install_code
+	puts "Syncing settings done."
+end
+
+def setup_default_homepage
+
+	files = Dir.glob "/usr/lib/firefox-*/defaults/preferences/all-redhat.js"
+
+	files.each do |file|
+
+		sed = '/browser.startup.homepage/s/\"[^\"]*\")/\"http:\/\/hda\")/' + "\n"
+		sed += '/startup.homepage_override_url/s/\"[^\"]*\")/\"\")/' + "\n"
+		sed += '/startup.homepage_welcome_url/s/\"[^\"]*\")/\"\")/'  + "\n"
+		puts sed
+
+		begin
+			sed_pipe = Kernel.open("| sed -i #{file} -f -", "w+")
+			sed_pipe.puts sed
+			sed_pipe.close()
+		rescue
+			if ($@ =~ /^open/)
+				$stderr.puts "cannot execute sed : #{$!} \n #{$@} \n"
+				break
+			end
+			raise
+		end
+
+	end
+
+end
+
+def do_monit
+	# configure monit daemon
+	if deb_based?
+		open("/etc/monit/monitrc", "w") do |f|
+			f.puts "# Automatically generated on #{Time.now.utc}- WARNING - any manual edits may be lost!"
+			f.puts "set daemon 30"
+			f.puts "include /etc/monit/conf.d/*.conf"
+		end
+	else
+		open("/etc/monit.conf", "w") do |f|
+			f.puts "# Automatically generated on #{Time.now.utc}- WARNING - any manual edits may be lost!"
+			f.puts "set daemon 30"
+			f.puts "include /etc/monit.d/logging"
+			f.puts "include /etc/monit.d/*.conf"
+		end
+	end
+end
+
+# NOTE: deprecated, kept just in case we need it some day
+def do_update_gem_system
+	message "Updating gem system"
+	gems = "gem update --system";
+	ret = do_system_multiple(gems)
+	puts "\tWARNING: gem update failed ...please run\n\t    #{gems}\n\t by hand until it installs correctly\n" unless ret
+end
+
+def run_gem_install(gem, version = nil)
+	ver = version ? " --version #{version} " : ""
+	#puts "system(\"gem install #{gem} #{ver} --no-rdoc --no-ri\")"
+	do_system_multiple "gem install #{gem} #{ver} --no-rdoc --no-ri"
+end
+
+def gem_list
+	res = {}
+	raw_list = open("|gem list") { |f| f.readlines }.map do |g|
+		if g =~ /\s*([^\s]+)\s*\(([^\)]+)\)/
+			gem = $1
+			versions = $2.split /[, ]+/
+			res[gem] = versions
+			# puts "DEBUG gem: \"#{gem}\" -> #{versions.inspect}"
+		end
+	end
+	res
+end
+
+# return true if there are no errors - pass thru false for errors
+def install_gem(gem, version = nil)
+	# puts gem.inspect
+	# puts version.inspect
+	usage if version && ! (version =~ /[0-9.]+/)
+	gems = @gem_list
+	if gems[gem]
+		# puts "installed"
+		if version && ! gems[gem].include?(version)
+			# puts "DEBUG: gem versions available: #{gems[gem].inspect}"
+			run_gem_install(gem, version)
+		end
+	else
+		# puts "NOT installed at all - installing ..."
+		run_gem_install(gem, version)
+	end
+	# return true for no errors
+	true
+end
+
+def do_install_gem(gem, version = nil)
+	ret = install_gem(gem, version)
+	puts "\t\tgem install failed for \"#{gem}\" ... try installing it by hand until it installs correctly" unless ret
+end
+
+def do_install_gems
+	message "*************** NOT INSTALLING GEMS ***************"
+
+	if fedora? or centos?
+		system "rpm -q rubygem-rails-2.3.4"
+	else
+		ret = do_install_gem("rails", "2.3.4")
+	end
+	ret = $?
+	if (ret >> 8)
+		# not installed
+		ret = do_install_gem("rails", "2.3.4")
+	end
+
+	message "Installing pluginfactory ..."
+	ret = install_gem("pluginfactory")
+	puts "\t\tgem install failed for \"pluginfactory\" ... try installing it by hand until it installs correctly" unless ret
+	if debian?
+		do_install_gem("rake", "0.8.7")
+		do_install_gem("gd2", "1.1.1")
+		do_install_gem("gruff", "0.3.6")
+		do_install_gem("rdoc", "3.12")
+		do_install_gem("sinatra", "1.0")
+		do_install_gem("passenger", "3.0.0")
+		do_install_gem("hoe", "2.6.2")
+		do_install_gem("spruz", "0.1.5")
+	end
+end
+
+def do_register_installed_apps
+
+	files = Dir.glob "/var/hda/platform/apps/*/app-register"
+
+	files.each do |file|
+		do_system_silent "bash #{file}"
+	end
+
+end
+
+def install_amahi_apps
+
+	# FIXME - register installed apps first, in case they
+	# were installed at a time mysql was not available
+	do_register_installed_apps
+
+	rpms = Array.new
+	rpms << "hda-app-amahitunes hda-app-photosorter hda-app-recipes"
+	rpms << "hda-app-slideshow hda-app-torrents hda-app-webcal hda-app-weightwatcher"
+	rpms << "hda-theme-iHama hda-theme-iHama-candy hda-theme-agedashi"
+	set = ""
+	rpms.each do |set|
+
+		do_system_silent "killall yum-updatesd"
+		message "\t#{set} ..."
+		puts "YUM INSTALL OF: #{set}";
+		do_system_silent "killall yum-updatesd"
+		do_system_silent "killall yum"
+
+		ret = do_system_multiple("yum -y install #{set}")
+		puts "\tWARNING: rpm install failed ... please run\n\tyum -y install #{set}\n\n\tby hand until it installs correctly" unless ret
+
+	end
+
+	# register them again, just in  case
+	do_register_installed_apps
+
+end
+
+def mark_as_installed
+
+	f = "/var/cache/hdactl.cache"
+	file = nil
+	begin
+		file = File.new f, "w"
+		file.puts "hda_installed=\"yes\""
+	rescue
+		abort "cannot open '#{f}': #{$!}"
+	ensure
+		file.close if file
+	end
+
+end
+
+def message(m)
+	OLDOUT.print m
+	OLDOUT.print "\n"
+	OLDOUT.flush
+end
+
+def selinux_permissive
+	do_system_silent "setenforce 0"
+end
+
+# FIXME - in some cases we may not want to do this
+def do_desktop_icons
+	do_system_silent "rsync -a /etc/skel/Desktop /root/"
+end
+
+def do_install_rpms
+	installed = IO.popen('rpm -qa') { |f| f.readlines }
+
+	rpms = []
+	rpms << "fedora-release yum-plugin-fastestmirror"
+	rpms << "mysql-server perl-libwww-perl bind bind-utils"
+	rpms << "php php-mysql dhcp dhclient monit perl-Authen-PAM"
+	rpms << "ruby-devel ruby-racc ruby-irb"
+	rpms << "rubygems rubygem-bundler"
+	rpms << "ruby-bdb ruby-libs rubygem-rdoc ruby-mysql"
+	rpms << "eruby eruby-libs ruby-docs hddtemp ruby-augeas"
+	rpms << "samba httpd cadaver patch sudo wol"
+	rpms << "rubygem-passenger bc"
+	# NOTE: these below are needed for installation in vmware # "express"
+	rpms << "fpaste perl-DBI hda-greyhole rsync ruby-dbus"
+
+	list = rpms.join(' ').split(' ')
+	to_install = list.delete_if { |pname| installed.select{|p| p =~ /^#{pname}-[0-9]/} != [] }
+
+	# FIXME force this for F12 6/16/10 due to a incomplete dep missing in dhcp
+	to_install << ["dhcp", "dhclient"]
+
+	if to_install.size == 0
+		message "No packages needed installation"
+		return
+	end
+
+	set = to_install.join ' '
+
+	puts "Packages to install: #{to_install.join ', '}"
+
+	do_system_silent "killall yum-updatesd"
+	message "Installing #{to_install.size} packages ..."
+	do_system_silent "killall yum"
+	ret = do_system_multiple("yum -y install #{set}")
+	puts "WARNING: rpm install failed ... please run\n\t   yum -y install #{set}\n\tby hand until it installs correctly" unless ret
+	# FIXME - needed for F12 updates of sudo
+	set = "sudo"
+	ret = do_system_multiple("yum -y update #{set}")
+	puts "WARNING: rpm install failed ... please run\n\t   yum -y install #{set}\n\tby hand until it installs correctly" unless ret
+
+	message "RPM packages installed"
+end
+
+
+def do_install_debs
+	pkgs = []
+	pkgs << "apache2 libapache2-mod-fcgid "
+	pkgs << "ruby-dev rubygems hddtemp pastebinit"
+	pkgs << "chkconfig bind9 bind9utils isc-dhcp-server mysql-server samba monit libauthen-pam-perl"
+	pkgs << "eruby ri1.8 php5-mysql php5 cadaver"
+	pkgs << "sysvinit-utils network-manager libboost-all-dev isc-dhcp-client ddclient"
+	pkgs << "libapache2-mod-passenger libapache2-mod-ruby"
+	pkgs << "libmagickcore-dev libmagickwand-dev libfcgi-dev"
+	pkgs << "libauthen-pam-perl libdbi-perl libwww-perl sudo"
+	pkgs << "greyhole pmount ntpdate bc ruby-dbus"
+
+	# TODO: decide if already installed packaged are eliminated first
+	to_install = pkgs.join(' ').split(' ')
+	set = to_install.join ' '
+
+	puts "Packages to install: #{to_install.join ', '}"
+
+	# TODO: kill running versions; kill updater
+	ret = do_system_multiple("apt-get update")
+	puts "WARNING: debian install failed ... please run\n\t   apt-get update\n\tby hand until it installs correctly" unless ret
+	ret = do_system_multiple("apt-get -y install #{set}")
+	puts "WARNING: debian install failed ... please run\n\t   apt-get -y install #{set}\n\tby hand until it installs correctly" unless ret
+	# enable debian modules
+	do_system_multiple("a2enmod \"*\"")
+end
+
+def do_install_packages
+	if fedora? or centos?
+		do_install_rpms
+	else
+		do_install_debs
+	end
+end
+
+# create an apaste as an "Amahi paste"
+def link_apaste
+	if fedora? or centos?
+		system('ln -sf /usr/bin/fpaste /usr/bin/apaste')
+	else
+		system('ln -sf /usr/bin/pastebinit /usr/bin/apaste')
+	end
+end
+
+
+def do_full_install(hda)
+
+	if fedora? or centos?
+		selinux_permissive
+	end
+
+	if File.exists?("/etc/sysconfig/amahi-hda")
+		# perhaps not a new install, do nothing unless forced
+		unless @opt["f"]
+			message "ERROR: this appears to be initialized."
+			message "... use option -f to force complete reinstall."
+			exit 1
+		end
+	end
+
+	@gem_list = gem_list
+
+	if fedora? or centos?
+		message "Stopping background software updates ..."
+		# stop background yum to prevent waits
+		do_system_silent "service yum-updatesd stop"
+		sleep 1
+		do_system_silent "killall yum-updatesd"
+		sleep 1
+		do_system_silent "killall yum-updatesd"
+		message "Background software updates stopped"
+
+		setup_default_homepage
+
+		rpms_to_remove = ["gnome-packagekit", "setroubleshoot setroubleshoot-server setroubleshoot-plugins"]
+		rpms_to_remove.each do |rpm|
+			do_system_silent "killall yum-updatesd"
+			puts "RPM UNINSTALL OF: #{rpm}";
+			do_system_silent "killall yum"
+			ret = do_system_multiple("rpm -e #{rpm}")
+			puts "WARNING: rpm uninstall failed ... please run\n\t   rpm -e #{rpm}\n\tby hand until it uninstalls correctly" unless ret
+		end
+
+	end
+
+	do_install_packages
+
+	link_apaste
+
+	message "Starting MySQL"
+	unless fedora? or centos?
+		do_system_silent "service " + MYSQL_SERVERNAME + " stop"
+	end
+	start_service MYSQL_SERVERNAME
+	sleep 2
+
+	# disable DNSSEC
+	disable_dnssec
+
+	message "Initializing MySQL"
+
+	# initialize mysql
+	initialize_mysql
+
+	# create greyhole db
+	initialize_greyhole
+
+	# not needed now that we package the gems with the platform in f17
+	# install stuff for rails
+	# message "Installing Ruby Gems (may take a while depending on your server speed)."
+	# do_install_gems unless @opt["r"]
+
+	# initialize rails and database
+	message "Initializing Ruby on Rails and DB"
+	do_system_silent "cd /var/hda/platform/html; bin/rake --trace db:migrate RAILS_ENV=production"
+
+	# update DB with remote data
+	message "Activating your HDA's settings"
+	copy_remote_db_configuration hda
+
+	sleep 1
+
+	# use the HDA data from the local db now
+	db_connect
+
+	if debian?
+		autoconfigure_network
+	end
+
+	message "Initializing settings"
+
+	# load db settings
+	get_db_settings
+
+	message "Configuring network"
+	autoconfigure_network
+
+	message "Setting up watchdog monitor"
+	do_monit
+
+	if fedora? or centos?
+		# set php timezone
+		do_php_timezone
+	end
+
+	# instantiate /etc/sysconfig/amahi-hda
+	substitute "/usr/share/hdactl/amahi-hda", "/etc/sysconfig/amahi-hda"
+
+	# lockdown f12 user install of software
+	# do_fedora12_lockdown
+
+	# samba configuration
+	message "Starting SAMBA server ..."
+	do_samba
+
+	# http configuration
+	message "Starting HTTP server ..."
+	do_httpd
+
+	# sudoers configuration
+	do_sudoers
+
+	# desktop icons
+	if fedora? or centos?
+		do_desktop_icons
+
+		# restart the network and the rest of the services
+		message "Setting the network services ..."
+	end
+	# do_restart_network
+
+	# NOTE: important to do this before the apps are
+	# installed
+	mark_as_installed
+
+	# This is being phased out!
+	# message "Installing HDA apps\n\t(may take a while depending on your download speed)."
+	# install_amahi_apps
+
+	# let the games begin!
+	message "Starting the rest of the services ..."
+	start_all_services
+
+	sleep 2
+
+	if fedora? or centos?
+		disable_selinux
+		disable_firewall
+	end
+
+	do_network
+
+	puts "****************************************************\n"
+	puts "  Amahi installed successfully! Please reboot it!\n"
+	puts "  Amahi installed successfully! Please reboot it!\n"
+	puts "****************************************************\n"
+
+	if @opt["q"]
+		# indicate we're done to the automated installer
+		message ("Instalation completed! Please reboot your HDA and all your computers!" * 4)
+		return
+	end
+
+	final_message2
+
+	message "\nThe system needs to reboot for your settings to take effect."
+	message "\nWould you like to reboot now? (strongly recommended)? (yes/no)?"
+
+
+	system "reboot" if @opt["y"]
+
+	resp = $stdin.gets
+
+	if resp != nil
+		if resp =~ /(y|yes)/
+			system "sync; sync; reboot"
+			exit 0 # just in case
+		end
+	end
+
+	message "OK. It is strongly recommended that you reboot your HDA ASAP."
+end
+
+def final_message2
+
+	message "\nCongratulations! Your Amahi HDA is set up!\n"
+	message "**** IMPORTANT **** IMPORTANT ***** IMPORTANT **** IMPORTANT ****"
+	message " Reboot your HDA, *make sure* it can see the internet and "
+	message " *only then* (optionally) you may turn off your router's DHCP "
+	message " server. See the FAQ for the tradeoffs of using your DHCP server."
+	message "                http://tinyurl.com/amahi-dhcp"
+	message ""
+	message "**** IMPORTANT **** IMPORTANT ***** IMPORTANT **** IMPORTANT ****"
+	message "\nWhen your HDA reboots, reboot the machines in your network,"
+	message "or \"repair\" their network interface, for them to see the HDA."
+	message "\nAnd You Are Ready To Go!"
+	message "\thttp://hda         Your dashboard"
+	message "\thttp://setup       Your setup pages, including storage, applications, etc."
+end
+
+def ip2int(ip_addr)
+	IPAddr.new(ip_addr).hton.unpack('L').first
+end
+
+def setup_network_manager(ip, gw, dns1, dns2)
+	# require it here and not at the top, because ruby-dbus has to be installed first!
+	require 'dbus'
+
+	s_ip4 = {
+	  "addresses"=> ["aau", [[ip2int(ip), 24, ip2int(gw)]]],
+	  "method"=>["s", "manual"],
+	  "dns"=> ["au", [ip2int(dns1), ip2int(dns2)]]
+	}
+
+	con = { "ipv4" => s_ip4 }
+
+	system_bus = DBus::SystemBus.instance
+	nm_service = system_bus.service("org.freedesktop.NetworkManager")
+	settings = nm_service.object("/org/freedesktop/NetworkManager/Settings")
+	settings.introspect
+	settings_iface = settings["org.freedesktop.NetworkManager.Settings"]
+	c_o = nm_service.object(settings_iface.ListConnections.first.first)
+	c_o.introspect
+	s = c_o["org.freedesktop.NetworkManager.Settings.Connection"].GetSettings
+
+	new_co = s[0].merge(con)
+	c_o["org.freedesktop.NetworkManager.Settings.Connection"].Update(new_co)
+end
+
+def do_network
+
+	message "Configuring your network (eth0)."
+
+	netmask = @settings['netmask']
+	self_address = @settings['self-address']
+	domain = @settings['domain']
+	net = @settings['net']
+	nick = @settings['nick']
+	id = @settings['hda-id']
+	gw = @settings['gateway']
+	dns1 = @settings['external-dns1']
+	dns2 = @settings['external-dns2']
+
+	# set up the network to be static via NetworkManager
+	ip = "#{net}.#{self_address}"
+	gwy = "#{net}.#{gw}"
+	setup_network_manager(ip, gwy, dns1, dns2)
+
+	rslv = "/etc/resolv.conf"
+	rslv_fh = nil
+	begin
+		rslv_fh = File.new rslv, "w"
+		rslv_fh.puts "search #{domain}"
+		rslv_fh.puts "nameserver #{net}.#{self_address}"
+	rescue
+		abort "cannot open '#{rslv}' for writing: #{$!}"
+	ensure
+		rslv_fh.close if rslv_fh != nil
+	end
+
+	# ensure it's readable!
+	File.chmod 0644, rslv
+
+end
+
+def disable_firewall
+
+	message "Disabling firewall.\n"
+
+	file = '/etc/sysconfig/system-config-firewall'
+	suffix = ".bak"
+
+	sed = "/^--enabled.*\$/s/enabled/disabled/\n"
+	begin
+		sed_pipe = Kernel.open("| sed -i#{suffix} #{file} -f -", "w+")
+		sed_pipe.puts sed
+		sed_pipe.close()
+	rescue
+		if ($@ =~ /^open/)
+			abort "cannot execute sed : #{$!} \n #{$@} \n"
+		end
+		raise
+	end
+
+	# move the old one out of the way - may confuses some scripts
+	# and the network configuration program!
+	do_system_silent "mv #{file}#{suffix} /tmp"
+
+end
+
+def disable_dnssec
+	open("/etc/sysconfig/dnssec", "w") { |f| f.write "DNSSEC='off'\nDLV='off'\n" }
+end
+
+def disable_selinux
+
+	message "Disabling SELinux."
+
+	file = '/etc/selinux/config'
+	suffix = ".bak"
+
+	sed = "/^[ ]*SELINUX=.*\$/s/=.*/=disabled/\n"
+
+	begin
+		sed_pipe = Kernel.open("| sed -i#{suffix} #{file} -f -", "w+")
+		sed_pipe.puts sed
+		sed_pipe.close()
+	rescue
+		if ($@ =~ /^open/)
+			abort "cannot execute sed : #{$!} \n #{$@} \n"
+		end
+		raise
+	end
+
+	# move the old one out of the way - may confuses some scripts
+	# and the network configuration program!
+	do_system_silent "mv #{file}#{suffix} /tmp"
+
+end
+
+def do_php_timezone
+	# FIXME: ugly hack!! very fragile, untested for all timezones! (only Los Angeles is known to work)
+	# we reported it broken in f14 see https://fedorahosted.org/augeas/ticket/149
+	system("line=`grep ^ZONE /etc/sysconfig/clock | sed -e 's/ZONE/date.timezone/; s/ /_/g'` && sed -e \"s|;date.timezone .*$|$line|\" -i /etc/php.ini")
+	return
+
+	require 'augeas'
+
+	message "Setting up global PHP timezone ..."
+	Augeas::open do |aug|
+		zone = aug.get("/files/etc/sysconfig/clock/ZONE")
+		#puts "ZONE = #{zone}"
+		# FIXME - we should also record it in the user settings! wether we get it or not from the clock file
+		# graceful degradation
+		unless zone
+			message "WARNING: could not patch the PHP timezone!\n"
+			return
+		end
+		zone.gsub! ' ', '_'
+		#puts "date.timezone = #{zone}"
+		aug.set("/files/etc/php.ini/Date/date.timezone", zone)
+		# the save is broken in f14 see https://fedorahosted.org/augeas/ticket/149
+		unless aug.save
+			raise IOError, "Failed to save changes to /etc/php.ini!"
+		end
+	end
+end
+
+def do_sudoers
+        puts "Configuring sudoers file ... "
+        sudofile = '/etc/sudoers'
+
+	if in_file?(sudofile, "#includedir /etc/sudoers.d")
+		puts "Sudoers file already set."
+	else
+		File.open(sudofile, "a") do |f|
+			f.puts "#includedir /etc/sudoers.d"
+		end
+	end
+        puts "Configuring sudoers file done."
+end
+
+def usage
+
+	puts "usage: hda-install [options] YOUR_INSTALL_CODE"
+	puts " options:"
+	puts "  -f: force"
+	puts "  -r: exclude ruby install"
+	puts "  -h: reconfigure httpd"
+	puts "  -s: reconfigure samba"
+	puts "  -d: reconfigure db"
+	puts "  -n: reconfigure network settings"
+	puts "  -m: reconfigure monit"
+	puts "  -o: disable SELinux and firewall (does not need install code)"
+	puts "  -D: debug output"
+	puts "  -q: quit after done, do not wait asking for the user input to reboot"
+	puts "  -i device: use this interface for networking (default: #{@network_device})"
+	puts "  -p: VPS mode"
+	puts "  -V: version"
+	exit(-1)
+end
+
+def version
+	puts "hda-install version #{$version}"
+	exit 0
+end
+
+def do_system(args)
+	res = system args
+	abort "execution of '#{args}' failed with code #{$?}" if !res
+	res
+end
+
+def do_system_silent(args)
+	system("#{args} 2>&1 ")
+end
+
+# attempt a command a number of times
+def do_system_multiple(args)
+	times = 5
+	res = false
+
+	(1..times).each {
+		res = system("#{args} 2>&1")
+		break if res
+	}
+	res
+end
+
+def set_standard_out
+	logfile = Time.now.strftime("/root/hda-install-%y%m%d-%H%M%S.log")
+	pwd = ENV["PWD"]
+
+	message "Verbose log file at '#{logfile}'."
+	# puts "Creating verbose log file '#{logfile}'."
+	# puts "(use it for submitting support requests or bug reports)."
+
+	begin
+		$stdout = $stdout.reopen(File.new(logfile, 'w'))
+	rescue
+		abort "Can't redirect STDOUT to '#{logfile}': #{$!}"
+	end
+end
+
+def do_basic_checks
+	ENV["PATH"] += ":/sbin:/usr/sbin:/bin"
+
+	ruid = Process.uid
+	euid = Process.euid
+
+	if euid != 0
+		puts "ERROR: this program must be run as \"root\". type \"su\" (to Switch User to root),"
+		puts "       then input your root password, then do the install again.\n"
+		puts "       \$ su"
+		puts "       Password: (your root password)"
+		puts "       # hda-install YOUR_INSTALL_CODE"
+		exit 1
+	end
+
+	if File.exists?("/etc/sysconfig/amahi-hda")
+		# perhaps not a new install, do nothing unless forced
+		unless @opt["f"]
+			puts "ERROR: this HDA appears to be installed already."
+			puts "  Remove /etc/sysconfig/amahi-hda to force reinstall."
+			puts "=========================================="
+			puts "Uninstall all apps before this!"
+			puts "Or they will vanish, leaving cruft behind!"
+			puts "=========================================="
+			exit 1
+		end
+		g = nil
+		begin
+			g =  open('http://www.yahoo.com/').read
+		rescue
+			g = nil
+		end
+
+		unless g
+			(1..3).each do
+				do_system_silent "service monit stop"
+				do_system_silent "service hdactl stop"
+				do_system_silent "service " + DHCPD_SERVERNAME + " stop"
+				do_system_silent "killall dhclient"
+				do_system_silent "service " + NAMED_SERVERNAME + " stop"
+				sleep 1
+				do_system_silent "dhclient eth0"
+				sleep 1
+				begin
+					g = open('http://www.yahoo.com/').read
+				rescue
+					g = nil
+				end
+				break if g != nil
+		end
+		end
+	end
+end
+
+def do_fedora12_lockdown
+	# FIXME - make this not apply for other distro releases
+	# as appropriate
+	do_system_silent('pklalockdown --lockdown org.freedesktop.packagekit.package-install')
+end
+
+def special_yum_update_for_fedora9
+	rpm = "http://mirrors.kernel.org/fedora/updates/9/i386.newkey/yum-3.2.21-2.fc9.noarch.rpm"
+	# ignore the result - it may fail if some users have it
+	# already
+	do_system_multiple("rpm -Uvh #{rpm}")
+end
+
+def main
+	version if @opt["V"]
+
+	if @opt["o"]
+		set_standard_out
+		if fedora? or centos?
+			disable_selinux
+			disable_firewall
+		end
+		exit 0
+	end
+
+	usage unless ARGV.size > 0
+
+	inst_code = ARGV[0]
+
+	do_basic_checks
+
+	set_standard_out
+
+	check_install_code inst_code
+
+	# remove for f10
+	# special_yum_update_for_fedora9
+
+	if @opt["s"] || @opt["d"] ||
+		@opt["n"] || @opt["h"] || @opt["w"] || @opt["o"]
+
+		db_connect
+		get_db_settings
+
+		do_httpd if @opt["h"]
+		do_network if @opt["n"]
+		do_samba if @opt["s"]
+		do_db inst_code if @opt["d"]
+		autoconfigure_network
+		do_monit if @opt["m"]
+		mark_as_installed
+
+		return
+	end
+
+	do_full_install inst_code
+end
+
+main

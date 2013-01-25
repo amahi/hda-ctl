@@ -1,0 +1,53 @@
+#! /usr/bin/ruby
+#
+# Amahi Home Server
+# Copyright (C) 2007-2009 Amahi Team
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License v3
+# (29 June 2007), as published in the COPYING file.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# file COPYING for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Amahi
+# team at http://www.amahi.org/ under "Contact Us."
+
+#
+# fake hda-install: fake the real hda-install script in a
+# simplified way, just for testing
+
+$stdout.sync = true
+
+def main2
+	1.upto(34) do |i|
+		if rand(10) > 3
+
+			puts "progress #{i}"
+			sleep 1
+
+		else
+			# fake an error
+			puts "test without err"
+			sleep 1
+			# puts "ERROR of some kind"
+			# exit 2
+		end
+	end
+	puts "DONE"
+	#exit 0
+end
+
+def main
+	open "stdout.log" do |f|
+		while not f.eof
+			puts f.readline
+			sleep 0.5
+		end
+	end
+end
+
+main2

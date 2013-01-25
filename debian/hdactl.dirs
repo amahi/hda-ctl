@@ -1,0 +1,15 @@
+/var/hda/calendar
+/var/hda/calendar/html
+/var/hda/calendar/locks
+/var/hda/calendar/logs
+
+/var/hda/files/Backups
+/var/hda/files/Books
+/var/hda/files/Docs
+/var/hda/files/Movies
+/var/hda/files/Music
+/var/hda/files/Pictures
+/var/hda/files/Public
+
+/var/hda/wiki
+/var/hda/wiki/logs
