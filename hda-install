@@ -425,7 +425,7 @@ def start_all_services
 
 	if fedora? or centos?
 		services_stop = [ 'gpm', 'hplip', 'isdn', 'kudzu', 'sendmail',
-			'yum-updatesd', 'dhcrelay', 'ldap', 'iptables']
+			'yum-updatesd', 'dhcrelay', 'ldap', 'firewalld']
 	else
 		services_stop = [] # [ NETWORKMANAGER_SERVERNAME ]
 	end
@@ -438,7 +438,7 @@ def start_all_services
 
 	services_start.each do |service|
 		if fedora? or centos?
-			system "chkconfig --levels 2345 #{service} on 2>&1"
+			system "systemctl enable #{service}.service 2>&1"
 		else
 			system "insserv #{service},start=2,3,4,5 2>&1"
 		end
@@ -449,18 +449,18 @@ def start_all_services
 	puts "Stopping and disabling unused services ... "
 	services_stop.each do |service|
 		if fedora? or centos?
-			system "chkconfig --levels 2345 #{service} off 2>&1"
+			system "systemctl disable #{service}.service 2>&1"
 		else
 			system "insserv -r #{service},start=2,3,4,5 2>&1"
 		end
-		system "service #{service} stop 2>&1"
+		system "systemctl stop #{service}.service 2>&1"
 	end
 
 	puts "Stopping unused services done."
 end
 
 def start_service(service)
-	do_system "service #{service} start"
+	do_system "systemctl start #{service}.service"
 end
 
 def get_os_version
@@ -543,7 +543,7 @@ def check_install_code(inst_code)
 			message "ERROR: the amahi.org server may not be available. Try again later."
 			exit(-1)
 		end
-		do_system_silent "service " + NETWORK_SERVERNAME + " restart"
+		do_system_silent "systemctl restart #{NETWORK_SERVERNAME}.service"
 
 		sleep 2
 		(1..3).each do
@@ -698,7 +698,6 @@ def do_install_gem(gem, version = nil)
 end
 
 def do_install_gems
-	message "*************** NOT INSTALLING GEMS ***************"
 
 	if fedora? or centos?
 		system "rpm -q rubygem-rails-2.3.4"
@@ -801,15 +800,10 @@ def do_install_rpms
 	rpms = []
 	rpms << "fedora-release yum-plugin-fastestmirror"
 	rpms << "mysql-server perl-libwww-perl bind bind-utils"
-	rpms << "php php-mysql dhcp dhclient monit perl-Authen-PAM"
-	rpms << "ruby-devel ruby-racc ruby-irb"
-	rpms << "rubygems rubygem-bundler"
-	rpms << "ruby-bdb ruby-libs rubygem-rdoc ruby-mysql"
-	rpms << "eruby eruby-libs ruby-docs hddtemp ruby-augeas"
-	rpms << "samba httpd cadaver patch sudo wol"
-	rpms << "rubygem-passenger bc"
-	# NOTE: these below are needed for installation in vmware # "express"
-	rpms << "fpaste perl-DBI hda-greyhole rsync ruby-dbus"
+	rpms << "php dhcp dhclient monit perl-Authen-PAM"
+	rpms << "hddtemp ruby-augeas"
+	rpms << "samba httpd cadaver patch sudo wol bc"
+	rpms << "fpaste perl-DBI rsync"
 
 	list = rpms.join(' ').split(' ')
 	to_install = list.delete_if { |pname| installed.select{|p| p =~ /^#{pname}-[0-9]/} != [] }
@@ -904,8 +898,8 @@ def do_full_install(hda)
 
 	if fedora? or centos?
 		message "Stopping background software updates ..."
-		# stop background yum to prevent waits
-		do_system_silent "service yum-updatesd stop"
+		# stop background yum to prevent waits - silently because they may not be there
+		do_system_silent "systemctl stop yum-updatesd.service"
 		sleep 1
 		do_system_silent "killall yum-updatesd"
 		sleep 1
