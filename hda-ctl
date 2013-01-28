@@ -749,7 +749,9 @@ sub generate_files {
 
 	&get_db_settings();
 	&print_dhcp_conf ();
-	&print_network ();
+	# FIXME - do we need this when using NetworkManager?
+	# should probably use the API
+	# &print_network ();
 	&get_named_settings();
 	&print_named_conf ();
 	&print_domain_info ();
