@@ -123,7 +123,6 @@ sub substitute {
 	my $self = $settings{'self-address'};
 	my $domain = $settings{'domain'};
 	my $net = $settings{'net'};
-	my $nick = $settings{'nick'};
 	my $api_key = $settings{'api-key'};
 	my $uname = `uname -p`;
 
@@ -140,7 +139,6 @@ sub substitute {
 		s/\@HDA_SELF\@/$self/g;
 		s/\@HDA_DOMAIN\@/$domain/g;
 		s/\@HDA_NETMASK\@/$netmask/g;
-		s/\@HDA_NICKNAME\@/$nick/g;
 		s/\@HDA_API_KEY\@/$api_key/g;
 		s/\@HDA_ARCH\@/$arch/g;
 		s/\@HDA_ARCH_64\@/$arch_64/g;

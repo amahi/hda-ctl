@@ -587,7 +587,6 @@ sub print_fedora_network {
 	my $self = $settings{'self-address'};
 	my $domain = $settings{'domain'};
 	my $net = $settings{'net'};
-	my $nick = $settings{'nick'};
 	my $id = $settings{'hda-id'};
 	my $gw = $settings{'gateway'};
 	my $dns1 = $settings{'external-dns1'};
@@ -640,7 +639,6 @@ sub print_debian_network {
 	my $self = $settings{'self-address'};
 	my $domain = $settings{'domain'};
 	my $net = $settings{'net'};
-	my $nick = $settings{'nick'};
 	my $id = $settings{'hda-id'};
 	my $gw = $settings{'gateway'};
 	my $dns1 = $settings{'external-dns1'};

@@ -339,7 +339,6 @@ def substitute(file_in, file_out)
 	self_address = @settings['self-address']
 	domain = @settings['domain']
 	net = @settings['net']
-	nick = @settings['nick']
 	api_key = @settings['api-key']
 	uname = `uname -p`
 
@@ -356,7 +355,6 @@ def substitute(file_in, file_out)
 		line.gsub! "\@HDA_SELF\@", self_address
 		line.gsub! "\@HDA_DOMAIN\@", domain
 		line.gsub! "\@HDA_NETMASK\@", netmask
-		line.gsub! "\@HDA_NICKNAME\@", nick
 		line.gsub! "\@HDA_API_KEY\@", api_key
 		line.gsub! "\@HDA_ARCH\@/", arch
 		line.gsub! "\@HDA_ARCH_64\@", arch_64
@@ -1111,7 +1109,6 @@ def do_network
 	self_address = @settings['self-address']
 	domain = @settings['domain']
 	net = @settings['net']
-	nick = @settings['nick']
 	id = @settings['hda-id']
 	gw = @settings['gateway']
 	dns1 = @settings['external-dns1']
