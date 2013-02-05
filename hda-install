@@ -1076,6 +1076,14 @@ def ip2int(ip_addr)
 	IPAddr.new(ip_addr).hton.unpack('L').first
 end
 
+def rand_hex(l)
+	"%0#{l}x" % rand(1 << l*4)
+end
+
+def rand_uuid
+	[8,4,4,4,12].map {|n| rand_hex(n)}.join('-')
+end
+
 def setup_network_manager(ip, gw, dns1, dns2)
 	# require it here and not at the top, because ruby-dbus has to be installed first!
 	require 'dbus'
@@ -1093,13 +1101,41 @@ def setup_network_manager(ip, gw, dns1, dns2)
 	settings = nm_service.object("/org/freedesktop/NetworkManager/Settings")
 	settings.introspect
 	settings_iface = settings["org.freedesktop.NetworkManager.Settings"]
-	c_o = nm_service.object(settings_iface.ListConnections.first.first)
-	c_o.introspect
-	s = c_o["org.freedesktop.NetworkManager.Settings.Connection"].GetSettings
-
-	new_co = s[0].merge(con)
-	c_o["org.freedesktop.NetworkManager.Settings.Connection"].Update(new_co)
+	connections = settings_iface.ListConnections.first
+	ethernet = select_connection(nm_service, connections)
+	if ethernet
+		s = ethernet["org.freedesktop.NetworkManager.Settings.Connection"].GetSettings
+		new_settings = s[0].merge(con)
+		ethernet["org.freedesktop.NetworkManager.Settings.Connection"].Update(new_settings)
+	else
+		# if we have not found an ethernet connection configured, create one
+		con["connection"] = {
+			"type" => "802-3-ethernet",
+			"uuid"=> rand_uuid,
+			"id" => "Amahi Network"
+		}
+		con["802-3-ethernet"] = {}
+		settings_iface.AddConnection(con)
+	end
 end
+
+# select an ethernet connection - returns a connection object or nil
+def select_connection(network_manager, connections)
+	connections.each do |conn|
+		conn_object = network_manager.object(conn)
+		conn_object.introspect
+		settings = conn_object["org.freedesktop.NetworkManager.Settings.Connection"].GetSettings
+		conn_settings = settings.first['connection']
+		if conn_settings['type'] == "802-3-ethernet"
+			puts "Using first ethernet connection \"#{conn_settings['id']}\"."
+			return conn_object
+		else
+			puts "Ignoring non-ethernet connection \"#{conn_settings['id']}\"."
+		end
+	end
+	nil
+end
+
 
 def do_network
 
