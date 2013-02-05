@@ -1,4 +1,5 @@
 %global rubyabi 1.9.1
+%define systemd_dir %{_prefix}/lib/systemd/system
 
 Name:           hda-ctl
 Version: 4.2.3
@@ -37,57 +38,59 @@ make hda-ctl-hup
 %install
 rm -rf %{buildroot}
 
-mkdir -p %{buildroot}%{_bindir}
-mkdir -p %{buildroot}%{_initrddir}
-mkdir -p %{buildroot}%{_sysconfdir}/sysconfig
-mkdir -p %{buildroot}/var/cache
-mkdir -p %{buildroot}%{_sysconfdir}/httpd/conf.d
-mkdir -p %{buildroot}%{_sysconfdir}/sudoers.d
-mkdir -p %{buildroot}/var/hda
-mkdir -p %{buildroot}/usr/share/hda-ctl
-mkdir -p %{buildroot}/etc/skel/Desktop
-mkdir -p %{buildroot}/root/Desktop
+%{__mkdir} -p %{buildroot}%{_bindir}
+%{__mkdir} -p %{buildroot}%{_initrddir}
+%{__mkdir} -p %{buildroot}%{_sysconfdir}/sysconfig
+%{__mkdir} -p %{buildroot}/var/cache
+%{__mkdir} -p %{buildroot}%{_sysconfdir}/httpd/conf.d
+%{__mkdir} -p %{buildroot}%{_sysconfdir}/sudoers.d
+%{__mkdir} -p %{buildroot}/var/hda
+%{__mkdir} -p %{buildroot}/usr/share/hda-ctl
+%{__mkdir} -p %{buildroot}/etc/skel/Desktop
+%{__mkdir} -p %{buildroot}/root/Desktop
+%{__mkdir} -p %{buildroot}%{systemd_dir}
 
-install -m 755 -p hda-ctl hda-install %{buildroot}%{_bindir}
+%{__install} -m 755 -p hda-ctl hda-install %{buildroot}%{_bindir}
 (cd %{buildroot}%{_bindir} && ln -sf hda-install hda-new-install)
-install -m 755 -p hda-settings hda-alias hda-install-file %{buildroot}%{_bindir}
-install -m 755 -p hda-register-apps hda-install-gem %{buildroot}%{_bindir}
-install -m 755 -p hda-change-gw hda-change-dns amahi-installer hda-php-zone-change hda-fix-sudoers %{buildroot}%{_bindir}
+%{__install} -m 755 -p hda-settings hda-alias hda-install-file %{buildroot}%{_bindir}
+%{__install} -m 755 -p hda-register-apps hda-install-gem %{buildroot}%{_bindir}
+%{__install} -m 755 -p hda-change-gw hda-change-dns amahi-installer hda-php-zone-change hda-fix-sudoers %{buildroot}%{_bindir}
 # FIXME - remove after a while. added on Mon Feb 28 01:16:51 PST 2011
-install -m 755 -p hda-upgrade-amahi5-to-amahi6 %{buildroot}%{_bindir}
-install -m 4755 -p hda-ctl-hup %{buildroot}%{_bindir}
-install -m 0440 -p hda-privs %{buildroot}%{_sysconfdir}/sudoers.d/amahi
-install -p hda-ctl.initscript %{buildroot}%{_initrddir}/hda-ctl
-install -p hda-ctl.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/hda-ctl
-install -p amahi-hda %{buildroot}/usr/share/hda-ctl/amahi-hda
-install -p amahi-installer.initscript %{buildroot}%{_initrddir}/amahi-installer
+%{__install} -m 755 -p hda-upgrade-amahi5-to-amahi6 %{buildroot}%{_bindir}
+%{__install} -m 4755 -p hda-ctl-hup %{buildroot}%{_bindir}
+%{__install} -m 0440 -p hda-privs %{buildroot}%{_sysconfdir}/sudoers.d/amahi
+%{__install} -m 0644 -p hda-ctl.service %{buildroot}%{systemd_dir}/hda-ctl.service
+%{__install} -p hda-ctl.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/hda-ctl
+%{__install} -p amahi-hda %{buildroot}/usr/share/hda-ctl/amahi-hda
+%{__install} -p amahi-installer.initscript %{buildroot}%{_initrddir}/amahi-installer
 
-rsync -Ca desktop-icons/ %{buildroot}/etc/skel/Desktop
-rsync -Ca desktop-icons/ %{buildroot}/root/Desktop
-rsync -Ca web-installer %{buildroot}/usr/share/hda-ctl/
+%{__cp} -a desktop-icons/ %{buildroot}/etc/skel/Desktop
+%{__cp} -a desktop-icons/ %{buildroot}/root/Desktop
+%{__cp} -a web-installer %{buildroot}/usr/share/hda-ctl/
 
 # periodic updates
-mkdir -p %{buildroot}%{_sysconfdir}/cron.hourly
-install -m 700 -p hda-update %{buildroot}%{_sysconfdir}/cron.hourly
+%{__mkdir} -p %{buildroot}%{_sysconfdir}/cron.hourly
+%{__install} -m 700 -p hda-update %{buildroot}%{_sysconfdir}/cron.hourly
 
 # base initialitation
-rsync -Ca httpd %{buildroot}/usr/share/hda-ctl/
+%{__cp} -a httpd %{buildroot}/usr/share/hda-ctl/
 
 # calendar server non-destructive initialitation
-mkdir -p %{buildroot}/var/hda/calendar
-mkdir -p %{buildroot}/var/hda/calendar/logs
-mkdir -p %{buildroot}/var/hda/calendar/html
-mkdir -p %{buildroot}/var/hda/calendar/locks
+%{__mkdir} -p %{buildroot}/var/hda/calendar
+%{__mkdir} -p %{buildroot}/var/hda/calendar/logs
+%{__mkdir} -p %{buildroot}/var/hda/calendar/html
+%{__mkdir} -p %{buildroot}/var/hda/calendar/locks
 
 # file server non-destructive initialization for later
-rsync -Ca samba %{buildroot}/usr/share/hda-ctl/
-mkdir -p %{buildroot}/var/hda/files/Backups
-mkdir -p %{buildroot}/var/hda/files/Books
-mkdir -p %{buildroot}/var/hda/files/Docs
-mkdir -p %{buildroot}/var/hda/files/Movies
-mkdir -p %{buildroot}/var/hda/files/Music
-mkdir -p %{buildroot}/var/hda/files/Pictures
-mkdir -p %{buildroot}/var/hda/files/Public
+%{__cp} -a samba %{buildroot}/usr/share/hda-ctl/
+%{__mkdir} -p %{buildroot}/var/hda/files/Backups
+%{__mkdir} -p %{buildroot}/var/hda/files/Books
+%{__mkdir} -p %{buildroot}/var/hda/files/Docs
+%{__mkdir} -p %{buildroot}/var/hda/files/Videos
+%{__mkdir} -p %{buildroot}/var/hda/files/Movies
+%{__mkdir} -p %{buildroot}/var/hda/files/Music
+%{__mkdir} -p %{buildroot}/var/hda/files/Pictures
+%{__mkdir} -p %{buildroot}/var/hda/files/Public
 
 %clean
 rm -rf %{buildroot}
@@ -95,29 +98,18 @@ rm -rf %{buildroot}
 %pre
 
 %post
-/sbin/chkconfig --add hda-ctl
-/sbin/chkconfig --add amahi-installer
+if [ $1 -eq 1 ] ; then 
+    # initial install
+    /bin/systemctl enable hda-ctl.service >/dev/null 2>&1 || :
+    /sbin/chkconfig --add amahi-installer
+fi
 
-mkdir -p /var/hda/files
+%{__mkdir} -p /var/hda/files
 
 if [[ -e /var/cache/hda-ctl.cache ]]; then
     if grep -q yes /var/cache/hda-ctl.cache ; then
         (/usr/sbin/usermod -a -G users apache) || true
-
-        # FIXME - added on 3/24/09, to be removed after 5/30/09
-        # make the platform default
-        (/bin/mv -f /etc/httpd/conf.d/04-platform.conf /etc/httpd/conf.d/01-platform.conf > /dev/null 2>&1) || true
-        (/bin/rm -rf /var/hda/as > /dev/null 2>&1) || true
-        (/bin/rm -rf /etc/httpd/conf.d/01-as.conf > /dev/null 2>&1) || true
-
-        # FIXME: to be removed in the next major version of amahi 6.0
-        INSUDOERS=`grep '^#includedir /etc/sudoers.d' /etc/sudoers`;
-        if [ -z "$INSUDOERS" ]; then
-            echo "#includedir /etc/sudoers.d" >> /etc/sudoers 
-        fi
     fi
-else
-    (cd /var/hda/files/ && mkdir -p Backups Books Docs Movies Music Pictures Public && chown 500:100 . * && chmod 775 *)
 fi
 
 if [ -f %{_sysconfdir}/samba/smbpasswd ]; then
@@ -131,15 +123,18 @@ if [ -f %{_sysconfdir}/samba/secrets.tdb ]; then
 fi
 
 %preun
-
-if [ "$1" = 0 ]; then
-    # not an update, a complete uninstall
-    /sbin/service hda-ctl stop > /dev/null 2>&1 || true
-    /sbin/chkconfig --del hda-ctl
+if [ $1 -eq 0 ]; then
+    # removal, not upgrade
+    /bin/systemctl --no-reload disable hda-ctl.service >/dev/null 2>&1 || :
+    /bin/systemctl stop hda-ctl.service >/dev/null 2>&1 || :
     /sbin/chkconfig --del amahi-installer
-else
-    # an update
-    /sbin/service hda-ctl restart > /dev/null 2>&1 || true
+fi
+
+%postun
+/bin/systemctl daemon-reload >/dev/null 2>&1 || :
+if [ $1 -ge 1 ] ; then
+    # upgrade, not uninstall
+    /bin/systemctl try-restart hda-ctl.service >/dev/null 2>&1 || :
 fi
 
 %files
@@ -165,10 +160,10 @@ fi
 %attr(0440, root, root)%{_sysconfdir}/sudoers.d/amahi
 %ghost %attr(-, 500, 100) /var/hda/files
 %attr(4755, root, root) %{_bindir}/hda-ctl-hup
-%{_initrddir}/hda-ctl
 %{_initrddir}/amahi-installer
 /usr/share/hda-ctl/*
 %attr(755, apache, apache) /var/hda/calendar
+%{systemd_dir}/hda-ctl.service
 
 %changelog
 * Sun Jan 13 2013 carlos puchol

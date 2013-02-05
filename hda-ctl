@@ -833,7 +833,7 @@ sub do_periodic_update {
 	}
 	my $os = &get_os_version();
 	my $arch = &get_arch();
-	my $url = "http://api-ddns.amahi.org/update?api_key=$api_key&os=$os&arch=$arch&ver=$version";
+	my $url = "https://api-ddns.amahi.org/api2/update?api_key=$api_key&os=$os&arch=$arch&ver=$version";
 	# FIXME - need to resolve mysql locking issues first
 	my $content = get($url);
 

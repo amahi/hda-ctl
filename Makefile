@@ -11,7 +11,7 @@ all: rpm
 dist: hda-ctl-hup
 	(mkdir -p release && cd release && mkdir -p hda-ctl-$(VERSION))
 	rsync -Ca hda-ctl hda-ctl-hup.c hda-ctl.spec hda-ctl.initscript hda-install \
-	        debian hda-install-gem \
+	        debian hda-install-gem hda-ctl.service \
 		amahi-hda httpd samba desktop-icons hda-ctl.sysconfig \
 		hda-settings hda-register-apps hda-install-file hda-alias \
 		hda-update hda-change-gw hda-change-dns amahi-installer.initscript \

@@ -1,0 +1,17 @@
+[Unit]
+Description=Amahi HDA Controller Interface
+ConditionPathExists=/usr/bin/hda-ctl
+Wants=network.target
+After=syslog.target network.target smb.service dhcpd.service named.service
+Before=monit.service
+
+[Service]
+Type=forking
+PIDFile=/run/hda-ctl.pid
+EnvironmentFile=-/etc/sysconfig/hda-ctl
+ExecStart=/usr/bin/hda-ctl $HDA_CTL_OPTIONS
+ExecReload=/usr/bin/kill -TERM $MAINPID
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

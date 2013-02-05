@@ -24,6 +24,7 @@ require 'open-uri'
 require 'net/http'
 require 'mysql'
 require 'tempfile'
+require 'dbus'
 require 'ipaddr'
 
 $version = "4.2.3"
@@ -180,9 +181,6 @@ end
 
 @network_device = @opt['i'] || @network_device
 
-$file_ifcfg = "ifcfg-#{@network_device}"
-$ifcfg_idx = 1
-
 $net = nil
 $gateway = nil
 $gatewayip = nil
@@ -235,9 +233,9 @@ def initialize_mysql
 	# configure mysql daemon - fail safe
 	do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} password '#{DATABASE_MAIN_PASSWORD}'"
 	# drop it first, force and silent, since most times it will not be there
-	do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} -f drop #{DATABASE_NAME}"
-	do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} create #{DATABASE_NAME}"
-	do_system_silent "echo \"GRANT ALL PRIVILEGES ON *.* TO '#{DATABASE_USER}'@'localhost' IDENTIFIED BY '#{DATABASE_PASSWORD}' WITH GRANT OPTION;\" | mysql -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD}"
+	# do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} -f drop #{DATABASE_NAME}"
+	# do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} create #{DATABASE_NAME}"
+	do_system_silent "echo \"drop database if exists #{DATABASE_NAME}; create database #{DATABASE_NAME}; GRANT ALL PRIVILEGES ON *.* TO '#{DATABASE_USER}'@'localhost' IDENTIFIED BY '#{DATABASE_PASSWORD}' WITH GRANT OPTION;\" | mysql -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD}"
 end
 
 def substitute_dir(dir_in, dir_out)
@@ -303,7 +301,7 @@ def initialize_greyhole
 		f.puts "#!/bin/sh\n/usr/bin/greyhole --fsck --email-report --dont-walk-metadata-store > /dev/null;\n"
 		f.puts "/usr/bin/greyhole --getuid > /tmp/greyhole.stats;\n"
 		f.puts "/usr/bin/greyhole --stats --json >> /tmp/greyhole.stats;\n"
-		f.puts "curl -s --data @/tmp/greyhole.stats https://api.amahi.org/api/greyhole > /dev/null;\n"
+		f.puts "curl -s --data @/tmp/greyhole.stats https://api.amahi.org/api2/greyhole > /dev/null;\n"
 	end
 end
 
@@ -519,7 +517,7 @@ def check_install_code(inst_code)
 	os = URI.escape(get_os_version)
 	arch = URI.escape(get_arch)
 
-	url = "http://api.amahi.org/install/#{inst_code}?os=#{os}&arch=#{arch}&ver=#{$version}"
+	url = "https://api.amahi.org/api2/install/#{inst_code}?os=#{os}&arch=#{arch}&ver=#{$version}"
 
 	@system_configuration = nil
 
@@ -781,6 +779,7 @@ def message(m)
 	OLDOUT.print m
 	OLDOUT.print "\n"
 	OLDOUT.flush
+	puts m
 end
 
 def selinux_permissive
@@ -957,10 +956,6 @@ def do_full_install(hda)
 	# use the HDA data from the local db now
 	db_connect
 
-	if debian?
-		autoconfigure_network
-	end
-
 	message "Initializing settings"
 
 	# load db settings
@@ -1019,7 +1014,6 @@ def do_full_install(hda)
 
 	if fedora? or centos?
 		disable_selinux
-		disable_firewall
 	end
 
 	do_network
@@ -1085,8 +1079,8 @@ def rand_uuid
 end
 
 def setup_network_manager(ip, gw, dns1, dns2)
-	# require it here and not at the top, because ruby-dbus has to be installed first!
-	require 'dbus'
+
+	puts "starting network install with IP: #{ip} and GW: #{gw}"
 
 	s_ip4 = {
 	  "addresses"=> ["aau", [[ip2int(ip), 24, ip2int(gw)]]],
@@ -1138,8 +1132,7 @@ end
 
 
 def do_network
-
-	message "Configuring your network (eth0)."
+	message "Configuring your network (#{@network_device})."
 
 	netmask = @settings['netmask']
 	self_address = @settings['self-address']
@@ -1172,31 +1165,6 @@ def do_network
 
 end
 
-def disable_firewall
-
-	message "Disabling firewall.\n"
-
-	file = '/etc/sysconfig/system-config-firewall'
-	suffix = ".bak"
-
-	sed = "/^--enabled.*\$/s/enabled/disabled/\n"
-	begin
-		sed_pipe = Kernel.open("| sed -i#{suffix} #{file} -f -", "w+")
-		sed_pipe.puts sed
-		sed_pipe.close()
-	rescue
-		if ($@ =~ /^open/)
-			abort "cannot execute sed : #{$!} \n #{$@} \n"
-		end
-		raise
-	end
-
-	# move the old one out of the way - may confuses some scripts
-	# and the network configuration program!
-	do_system_silent "mv #{file}#{suffix} /tmp"
-
-end
-
 def disable_dnssec
 	open("/etc/sysconfig/dnssec", "w") { |f| f.write "DNSSEC='off'\nDLV='off'\n" }
 end
@@ -1205,29 +1173,20 @@ def disable_selinux
 
 	message "Disabling SELinux."
 
-	file = '/etc/selinux/config'
-	suffix = ".bak"
-
-	sed = "/^[ ]*SELINUX=.*\$/s/=.*/=disabled/\n"
+	cmd = "/^[ ]*SELINUX=.*\$/s/=.*/=disabled/\n"
 
 	begin
-		sed_pipe = Kernel.open("| sed -i#{suffix} #{file} -f -", "w+")
-		sed_pipe.puts sed
-		sed_pipe.close()
-	rescue
-		if ($@ =~ /^open/)
-			abort "cannot execute sed : #{$!} \n #{$@} \n"
+		Kernel.open("| sed -i /etc/selinux/config -f -", "w+") do |pipe|
+			pipe.puts cmd
 		end
-		raise
+	rescue
+		message "Disabling SELinux: FAILED"
 	end
-
-	# move the old one out of the way - may confuses some scripts
-	# and the network configuration program!
-	do_system_silent "mv #{file}#{suffix} /tmp"
-
 end
 
 def do_php_timezone
+	message "FIXME: Setting up global PHP timezone ..."
+	return
 	# FIXME: ugly hack!! very fragile, untested for all timezones! (only Los Angeles is known to work)
 	# we reported it broken in f14 see https://fedorahosted.org/augeas/ticket/149
 	system("line=`grep ^ZONE /etc/sysconfig/clock | sed -e 's/ZONE/date.timezone/; s/ /_/g'` && sed -e \"s|;date.timezone .*$|$line|\" -i /etc/php.ini")
@@ -1320,15 +1279,12 @@ def set_standard_out
 	logfile = Time.now.strftime("/root/hda-install-%y%m%d-%H%M%S.log")
 	pwd = ENV["PWD"]
 
-	message "Verbose log file at '#{logfile}'."
-	# puts "Creating verbose log file '#{logfile}'."
-	# puts "(use it for submitting support requests or bug reports)."
-
 	begin
 		$stdout = $stdout.reopen(File.new(logfile, 'w'))
 	rescue
 		abort "Can't redirect STDOUT to '#{logfile}': #{$!}"
 	end
+	message "Verbose log file at '#{logfile}'."
 end
 
 def do_basic_checks
@@ -1405,7 +1361,6 @@ def main
 		set_standard_out
 		if fedora? or centos?
 			disable_selinux
-			disable_firewall
 		end
 		exit 0
 	end
