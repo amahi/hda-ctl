@@ -543,7 +543,6 @@ sub move_files {
 	my $dhcp_path = "/etc/dhcp";
 
 	&mv ($file_dhcpd, $dhcp_path);
-	# &mv ($file_resolv, "/etc");
 }
 
 
@@ -622,8 +621,15 @@ sub print_fedora_network {
 	system("rm /etc/sysconfig/networking/devices/$file_ifcfg /etc/sysconfig/networking/profiles/default/$file_ifcfg");
 	system("ln $prefix/$file_ifcfg /etc/sysconfig/networking/devices/$file_ifcfg");
 	system("ln $prefix/$file_ifcfg /etc/sysconfig/networking/profiles/default/$file_ifcfg");
+}
 
+sub print_resolv {
+
+	my $self = $settings{'self-address'};
+	my $domain = $settings{'domain'};
+	my $net = $settings{'net'};
 	my $rslv = "/etc/resolv.conf";
+
 	open (my $RSLV, "> $rslv") or &logdie("cannot open '$rslv' for writing: $!");
 	printf $RSLV "search $domain\n";
 	printf $RSLV "nameserver $net.$self\n";
@@ -753,6 +759,7 @@ sub generate_files {
 	&get_named_settings();
 	&print_named_conf ();
 	&print_domain_info ();
+	&print_resolv ();
 	&move_files();
 }
 
