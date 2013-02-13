@@ -1,5 +1,4 @@
 VERSION=4.2.3
-ARCH=`uname -m`
 RPMBUILDDIR=$(HOME)/rpmbuild
 
 # SIGN=--sign
@@ -26,8 +25,8 @@ update-header:
 	sed -i -e 's/^Version:\s*[0-9.]*\s*$$/Version: $(VERSION)/' hda-ctl.spec
 
 rpm: update-header dist
-	(cd release && rpmbuild $(SIGN) --target=$(ARCH) -ta hda-ctl-$(VERSION).tar.gz)
-	mv $(RPMBUILDDIR)/RPMS/$(ARCH)/hda-ctl-$(VERSION)-*.$(ARCH).rpm release/
+	(cd release && rpmbuild $(SIGN) -ta hda-ctl-$(VERSION).tar.gz)
+	mv $(RPMBUILDDIR)/RPMS/*/hda-ctl-$(VERSION)-*.rpm release/
 	mv $(RPMBUILDDIR)/SRPMS/hda-ctl-$(VERSION)-*.src.rpm release/
 
 deb: update-header dist
@@ -38,4 +37,4 @@ deb: update-header dist
 	(cd release/hda-ctl-$(VERSION)/debian && debuild -uc -us)
 
 install: rpm
-	(cd release && sudo rpm -Uvh hda-ctl-$(VERSION)-*.$(ARCH).rpm)
+	(cd release && sudo rpm -Uvh hda-ctl-$(VERSION)-*.rpm)
