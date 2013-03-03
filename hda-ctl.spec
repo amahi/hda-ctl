@@ -15,7 +15,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires: hda-platform >= 6.0.0
 Requires: bind bind-utils caching-nameserver
 Requires: sudo >= 1.7.2
-Requires: dhcp mysql-server samba httpd
+Requires: dhcp mariadb-server samba httpd
 Requires: ruby(abi) = %{rubyabi}
 Requires: monit perl-Authen-PAM fpaste
 Requires: ruby-mysql ruby-libs ruby-augeas rubygem(bundler) rubygem(ruby-dbus)
@@ -51,7 +51,6 @@ rm -rf %{buildroot}
 %{__mkdir} -p %{buildroot}%{systemd_dir}
 
 %{__install} -m 755 -p hda-ctl hda-install %{buildroot}%{_bindir}
-(cd %{buildroot}%{_bindir} && ln -sf hda-install hda-new-install)
 %{__install} -m 755 -p hda-settings hda-alias hda-install-file %{buildroot}%{_bindir}
 %{__install} -m 755 -p hda-register-apps hda-install-gem %{buildroot}%{_bindir}
 %{__install} -m 755 -p hda-change-gw hda-change-dns amahi-installer hda-php-zone-change hda-fix-sudoers %{buildroot}%{_bindir}
@@ -148,7 +147,6 @@ fi
 %{_bindir}/hda-install
 %{_bindir}/hda-install-file
 %{_bindir}/hda-install-gem
-%{_bindir}/hda-new-install
 %{_bindir}/hda-php-zone-change
 %{_bindir}/hda-register-apps
 %{_bindir}/hda-settings
