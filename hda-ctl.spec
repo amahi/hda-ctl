@@ -13,7 +13,8 @@ Source:         %{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 Requires: hda-platform >= 6.0.0
-Requires: bind bind-utils caching-nameserver
+#Requires: bind bind-utils caching-nameserver
+Requires: dnsmasq
 Requires: sudo >= 1.7.2
 Requires: dhcp mariadb-server samba httpd
 Requires: ruby(abi) = %{rubyabi}
