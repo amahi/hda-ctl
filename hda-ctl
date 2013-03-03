@@ -327,7 +327,7 @@ sub print_void_info {
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = gmtime();
 	$year -= 100;
 	$year = 10 if $year < 10; # needed e.g. if the system has a bad clock
-	my $serial = sprintf("%02d%02d%02d%02d%02d", $year, $mon, $mday, $hour, $min);
+	my $serial = sprintf("%02d%02d%02d%02d%02d%02d", $year, $mon, $mday, $hour, $min, $sec);
 
 	printf $void "\$TTL    86400\n";
 	printf $void "@ IN SOA hda.%s. root.%s. (\n", $domain, $domain;
@@ -490,7 +490,7 @@ sub print_domain_info {
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = gmtime();
 	$year -= 100;
 	$year = 10 if $year < 10; # needed e.g. if the system has a bad clock
-	my $serial = sprintf("%02d%02d%02d%02d%02d", $year, $mon, $mday, $hour, $min);
+	my $serial = sprintf("%02d%02d%02d%02d%02d%02d", $year, $mon, $mday, $hour, $min, $sec);
 
 	my $first_addr = $settings{'net_start'} + 1;
 	my $last_addr = $first_addr + 2 ** (32 - $settings{'netmask_size'}) - 3;
@@ -500,14 +500,29 @@ sub print_domain_info {
 	my $thaw1 = sprintf("rndc thaw %s", $domain);
 	my $thaw2 = sprintf("rndc thaw %s", $rev_net);
 
-	# FIXME: this needs some error checking!
-	if (!$dump_mode) { system ($freeze1); system ($freeze2); }
+	unless ($dump_mode) {
+		&freeze_or_thaw("freeze", $domain);
+		&freeze_or_thaw("freeze", $rev_net);
+        }
 	&fill_hosts_table($first_addr, $last_addr);
 	&print_n2a_info ($serial, $first_addr, $last_addr);
 	&print_a2n_info ($serial, $first_addr, $last_addr);
 	&print_void_info ($domain, $void_host);
-	# FIXME: this needs some error checking as well!
-	if (!$dump_mode) { system ($thaw1); system ($thaw2); }
+        unless ($dump_mode) {
+		&freeze_or_thaw("thaw", $rev_net);
+		&freeze_or_thaw("thaw", $domain);
+        }
+}
+
+# freeze or thaw
+sub freeze_or_thaw {
+	my $operation = shift;
+	my $domain = shift;
+	my $freeze = sprintf("rndc %s %s", $operation, $domain);
+
+        if (system($freeze)) {
+		&log("warning: failed to run " . $freeze);
+	}
 }
 
 sub mv {
