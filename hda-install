@@ -378,7 +378,7 @@ def do_restart_network
 	#do_system_silent "service " + NETWORK_SERVERNAME + " stop"
 	#sleep 1
 	#do_system_silent "service " = DHCPD_SERVERNAME + " stop"
-	do_system_silent "service " + NAMED_SERVERNAME + " stop"
+	#do_system_silent "service " + NAMED_SERVERNAME + " stop"
 	#sleep 1
 	#do_system_silent "service " + NETWORK_SERVERNAME + " start"
 	#puts "Network restart done."
@@ -416,20 +416,18 @@ def start_all_services
 	puts "Starting services ... "
 
 	# NOTE: monit must be the last one, to prevent race conditions
-	services_start = [ 'hda-ctl', 'ddclient', HTTPD_SERVERNAME, DHCPD_SERVERNAME, NETWORK_SERVERNAME,
-	NAMED_SERVERNAME, MYSQL_SERVERNAME, SMB_SERVERNAME, NMB_SERVERNAME, 'monit', 'hddtemp']
+	services_start = [ 'hda-ctl', HTTPD_SERVERNAME, 'dnsmasq', NETWORK_SERVERNAME,
+	MYSQL_SERVERNAME, SMB_SERVERNAME, NMB_SERVERNAME, 'monit', 'hddtemp']
 
 	if fedora? or centos?
 		services_stop = [ 'gpm', 'hplip', 'isdn', 'kudzu', 'sendmail',
 			'yum-updatesd', 'dhcrelay', 'ldap', 'firewalld']
 	else
-		services_stop = [] # [ NETWORKMANAGER_SERVERNAME ]
+		services_stop = []
 	end
 
 	if @opt[p]
 		services_stop << DHCPD_SERVERNAME
-	else
-		services_start << DHCPD_SERVERNAME
 	end
 
 	services_start.each do |service|
@@ -796,8 +794,8 @@ def do_install_rpms
 
 	rpms = []
 	rpms << "fedora-release yum-plugin-fastestmirror"
-	rpms << "mysql-server perl-libwww-perl bind bind-utils"
-	rpms << "php dhcp dhclient monit perl-Authen-PAM"
+	rpms << "mysql-server perl-libwww-perl dnsmasq"
+	rpms << "php dhclient monit perl-Authen-PAM"
 	rpms << "hddtemp ruby-augeas"
 	rpms << "samba httpd cadaver patch sudo wol bc"
 	rpms << "fpaste perl-DBI rsync"
@@ -835,9 +833,9 @@ def do_install_debs
 	pkgs = []
 	pkgs << "apache2 libapache2-mod-fcgid "
 	pkgs << "ruby-dev rubygems hddtemp pastebinit"
-	pkgs << "chkconfig bind9 bind9utils isc-dhcp-server mysql-server samba monit libauthen-pam-perl"
+	pkgs << "chkconfig dnsmasq mysql-server samba monit libauthen-pam-perl"
 	pkgs << "eruby ri1.8 php5-mysql php5 cadaver"
-	pkgs << "sysvinit-utils network-manager libboost-all-dev isc-dhcp-client ddclient"
+	pkgs << "sysvinit-utils network-manager libboost-all-dev isc-dhcp-client"
 	pkgs << "libapache2-mod-passenger libapache2-mod-ruby"
 	pkgs << "libmagickcore-dev libmagickwand-dev libfcgi-dev"
 	pkgs << "libauthen-pam-perl libdbi-perl libwww-perl sudo"
