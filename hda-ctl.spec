@@ -3,7 +3,7 @@
 
 Name:           hda-ctl
 Version: 4.2.3
-Release:        1
+Release:        2
 
 Summary:        hda-ctl is the Amahi HDA daemon.
 
@@ -21,6 +21,10 @@ Requires: monit perl-Authen-PAM fpaste
 Requires: ruby-mysql ruby-libs ruby-augeas rubygem(bundler) rubygem(ruby-dbus)
 Requires: perl-Authen-PAM perl-libwww-perl
 Requires: cadaver php php-mysqlnd perl-URI filesystem rsync
+Requires:         systemd
+Requires(post):   systemd
+Requires(preun):  systemd
+Requires(postun): systemd
 
 %define debug_package %{nil}
 
@@ -49,6 +53,7 @@ rm -rf %{buildroot}
 %{__mkdir} -p %{buildroot}/etc/skel/Desktop
 %{__mkdir} -p %{buildroot}/root/Desktop
 %{__mkdir} -p %{buildroot}%{systemd_dir}
+%{__mkdir} -p %{buildroot}%{_sysconfdir}/logrotate.d
 
 %{__install} -m 755 -p hda-ctl hda-install %{buildroot}%{_bindir}
 %{__install} -m 755 -p hda-settings hda-alias hda-install-file %{buildroot}%{_bindir}
@@ -62,6 +67,7 @@ rm -rf %{buildroot}
 %{__install} -p hda-ctl.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/hda-ctl
 %{__install} -p amahi-hda %{buildroot}/usr/share/hda-ctl/amahi-hda
 %{__install} -p amahi-installer.initscript %{buildroot}%{_initrddir}/amahi-installer
+%{__install} -m 0644 -p hda-ctl.logrotate %{buildroot}%{_sysconfdir}/logrotate.d/hda-ctl
 
 %{__cp} -a desktop-icons/ %{buildroot}/etc/skel/Desktop
 %{__cp} -a desktop-icons/ %{buildroot}/root/Desktop
@@ -97,9 +103,9 @@ rm -rf %{buildroot}
 %pre
 
 %post
+%systemd_post hda-ctl.service
 if [ $1 -eq 1 ] ; then 
     # initial install
-    /bin/systemctl enable hda-ctl.service >/dev/null 2>&1 || :
     /sbin/chkconfig --add amahi-installer
 fi
 
@@ -122,19 +128,14 @@ if [ -f %{_sysconfdir}/samba/secrets.tdb ]; then
 fi
 
 %preun
+%systemd_preun hda-ctl.service
 if [ $1 -eq 0 ]; then
     # removal, not upgrade
-    /bin/systemctl --no-reload disable hda-ctl.service >/dev/null 2>&1 || :
-    /bin/systemctl stop hda-ctl.service >/dev/null 2>&1 || :
     /sbin/chkconfig --del amahi-installer
 fi
 
 %postun
-/bin/systemctl daemon-reload >/dev/null 2>&1 || :
-if [ $1 -ge 1 ] ; then
-    # upgrade, not uninstall
-    /bin/systemctl try-restart hda-ctl.service >/dev/null 2>&1 || :
-fi
+%systemd_postun_with_restart hda-ctl.service
 
 %files
 %defattr(-,root,root,-)
@@ -162,8 +163,11 @@ fi
 /usr/share/hda-ctl/*
 %attr(755, apache, apache) /var/hda/calendar
 %{systemd_dir}/hda-ctl.service
+%config(noreplace) %{_sysconfdir}/logrotate.d/hda-ctl
 
 %changelog
+* Mon Mar  4 2013 carlos puchol
+- add logrotate
 * Sun Jan 13 2013 carlos puchol
 - rename to hda-ctl and start on f18 port
 * Sun Mar 11 2007 carlos puchol

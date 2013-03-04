@@ -1,0 +1,8 @@
+/var/log/hda-updates.log /var/log/amahi-app-installer.log {
+	missingok
+	nocreate
+	compress
+	rotate 6
+	monthly
+	endscript
+}
