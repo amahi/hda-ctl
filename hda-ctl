@@ -620,7 +620,6 @@ sub print_fedora_network {
 	my $self = $settings{'self-address'};
 	my $domain = $settings{'domain'};
 	my $net = $settings{'net'};
-	my $id = $settings{'hda-id'};
 	my $gw = $settings{'gateway'};
 	my $dns1 = $settings{'external-dns1'};
 	my $dns2 = $settings{'external-dns2'};
@@ -681,7 +680,6 @@ sub print_debian_network {
 	my $self = $settings{'self-address'};
 	my $domain = $settings{'domain'};
 	my $net = $settings{'net'};
-	my $id = $settings{'hda-id'};
 	my $gw = $settings{'gateway'};
 	my $dns1 = $settings{'external-dns1'};
 	my $dns2 = $settings{'external-dns2'};
@@ -1096,26 +1094,25 @@ sub write_pid {
 	}
 }
 
-sub do_periodic_update {
-
-	# NOTE - this is not needed (yet), since the API key
-	# does not change. if other things are needed from the
-	# DB, then this should be uncommented
-	# &db_connect ();
-	# &get_db_settings();
-
+sub do_action {
+	my $action = shift;
 	my $api_key = $settings{'api-key'};
-	if (!defined($api_key)) {
-		# FIXME: deprecated, but some may still have it
-		$api_key = $settings{'hda-id'};
-	}
 	my $os = &get_os_version();
 	my $arch = &get_arch();
-	my $url = "https://api-ddns.amahi.org/api2/update?api_key=$api_key&os=$os&arch=$arch&ver=$version";
-	# FIXME - need to resolve mysql locking issues first
+	my $url = "https://api-ddns.amahi.org/api2/$action?api_key=$api_key&os=$os&arch=$arch&ver=$version";
 	my $content = get($url);
+}
 
-	# &db_disconnect ();
+sub do_periodic_update {
+	&do_action("update");
+}
+
+sub do_start_action {
+	&do_action("start");
+}
+
+sub do_shutdown_action {
+	&do_action("stop");
 }
 
 sub do_periodic_action {
@@ -1416,11 +1413,11 @@ sub main {
 
 	&db_disconnect ();
 
+	&do_start_action();
+
 	umask 022;
 	do {
 		$now = time;
-
-		&do_periodic_action();
 
 		my $left = $period;
 		while (($left > 0) && !$caught_hup && !$caught_term && !$caught_usr1) {
@@ -1429,6 +1426,9 @@ sub main {
 			$0 = sprintf("%s - sleeping for %s seconds", $program, $left);
 			$left -= sleep $delay;
 		}
+
+		&do_periodic_action();
+
 		unless ($caught_term) {
 			if ($caught_hup) {
 				&do_hup_action ();
@@ -1439,6 +1439,7 @@ sub main {
 	} while (!$caught_term);
 
 	&log ("caught SIGTERM: exiting hda-ctl v$version.") if $caught_term;
+	&do_shutdown_action();
 	&unlink_files();
 	kill('TERM', $command_processor_pid);
 

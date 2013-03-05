@@ -3,7 +3,7 @@
 
 Name:           hda-ctl
 Version: 4.2.3
-Release:        2
+Release:        3
 
 Summary:        hda-ctl is the Amahi HDA daemon.
 
