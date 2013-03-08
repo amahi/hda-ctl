@@ -17,7 +17,7 @@
 # $use_opendns_secondary = 0;
 # $use_dnsmasq_dns = 0;
 # $use_dnsmasq_dhcp = 0;
-# $dnsmasq_query_local_upstream = 0;
+# $dnsmasq_resolve_catch_all = 0;
 #
 # the file is interpreted as perl, so do not break it!
 # note that if these settings are in the database, those always take priority when the program starts
@@ -53,9 +53,9 @@ my $use_dnsmasq_dhcp = 1;
 
 #######################################################
 # DNSMASQ settings:
-# To not be fully authoritative DNS for your Amahi domain and
-# query upstream, set to 1
-my $dnsmasq_query_local_upstream = 0;
+# To resolve everything (including non-existing names) in the DNS
+# for your Amahi domain, set to 1
+my $dnsmasq_resolve_catch_all = 0;
 
 our ($DEVICE, $NETMASK_SIZE, $NET_START, $DYN_LO, $DYN_HI, $USE_OPENDNS_SECONDARY, $DHCP_LEASE);
 
@@ -875,7 +875,7 @@ sub print_dnsmasq_dns_conf {
 		printf $dnsmasq "domain=%s\n", $domain;
 		# this did not work as expected for being authoritative for the local domain
 		# printf ($dnsmasq "local=\/%s\/%s\n", $domain, $self) unless $dnsmasq_query_local_upstream;
-		printf ($dnsmasq "address=\/%s\/%s\n", $domain, $self) unless $dnsmasq_query_local_upstream;
+		printf ($dnsmasq "address=\/%s\/%s\n", $domain, $self) if $dnsmasq_resolve_catch_all;
 		printf $dnsmasq "ptr-record=%s,hda.%s\n", &reverse_net($self), $domain;
 		&print_aliases_dnsmasq ($dnsmasq);
 	} else {
