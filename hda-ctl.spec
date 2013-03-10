@@ -3,7 +3,7 @@
 
 Name:           hda-ctl
 Version: 4.2.3
-Release:        3
+Release:        5
 
 Summary:        hda-ctl is the Amahi HDA daemon.
 
@@ -157,7 +157,7 @@ fi
 /root/Desktop/*
 %{_sysconfdir}/cron.hourly/hda-update
 %attr(0440, root, root)%{_sysconfdir}/sudoers.d/amahi
-%ghost %attr(-, 500, 100) /var/hda/files
+%ghost %attr(0775, apache, users) /var/hda/files
 %attr(4755, root, root) %{_bindir}/hda-ctl-hup
 %{_initrddir}/amahi-installer
 /usr/share/hda-ctl/*
