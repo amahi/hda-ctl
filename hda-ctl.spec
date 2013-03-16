@@ -2,7 +2,7 @@
 %define systemd_dir %{_prefix}/lib/systemd/system
 
 Name:           hda-ctl
-Version: 4.2.3
+Version: 4.2.4
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
