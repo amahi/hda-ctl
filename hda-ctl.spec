@@ -3,7 +3,7 @@
 
 Name:           hda-ctl
 Version: 4.2.3
-Release:        4
+Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
 
@@ -19,7 +19,7 @@ Requires: dhcp mariadb-server samba httpd
 Requires: ruby(abi) = %{rubyabi}
 Requires: monit perl-Authen-PAM fpaste
 Requires: ruby-mysql ruby-libs ruby-augeas rubygem(bundler) rubygem(ruby-dbus)
-Requires: perl-Authen-PAM perl-libwww-perl
+Requires: perl-Authen-PAM perl-libwww-perl wget
 Requires: cadaver php php-mysql perl-URI filesystem rsync
 Requires:         systemd
 Requires(post):   systemd
