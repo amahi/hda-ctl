@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "4.2.7"
+$version = "4.2.5"
 
 # FIXME only eth0 supported for now - more hopefully in the future
 @network_device = "eth0"
@@ -48,13 +48,13 @@ def set_platform
     issue = File.open("/etc/issue", "r");
     line = issue.gets;
     $platform = "unknown";
-    if ((line.include? "ubuntu") or (line.include? "debian"))
+    if ((line.include? "Ubuntu") or (line.include? "Debian"))
         $platform = "debian";
     end
-    if (line.include? "fedora")
+    if (line.include? "Fedora")
         $platform = "fedora";
     end
-    if (line.include? "centos")
+    if (line.include? "CentOS")
         $platform = "centos";
     end
 end
@@ -88,50 +88,50 @@ end
 # platform specific constants
 
 if fedora? or centos?
-	dhcpd_servername = 'dhcpd'
-	httpd_servername = 'httpd'
-	httpd_envfile = '/etc/sysconfig/httpd'
-	mysql_servername = 'mysqld'
-	named_servername = 'named'
-	network_servername = 'network'
-	networkmanager_servername = 'networkmanager'
-	nmb_servername = 'nmb'
-	smb_servername = 'smb'
+	DHCPD_SERVERNAME = 'dhcpd'
+	HTTPD_SERVERNAME = 'httpd'
+	HTTPD_ENVFILE = '/etc/sysconfig/httpd'
+	MYSQL_SERVERNAME = 'mysqld'
+	NAMED_SERVERNAME = 'named'
+	NETWORK_SERVERNAME = 'network'
+	NETWORKMANAGER_SERVERNAME = 'NetworkManager'
+	NMB_SERVERNAME = 'nmb'
+	SMB_SERVERNAME = 'smb'
 else
-	dhcpd_servername = 'isc-dhcp-server'
-	httpd_servername = 'apache2'
-	httpd_envfile = '/etc/apache2/envvars'
-	mysql_servername = 'mysql'
-	named_servername = 'bind9'
-	network_servername = 'networking'
-	networkmanager_servername = 'network-manager'
-	# fixme: change needed for debian: their service samba starts both smb and nmb
-	nmb_servername = 'nmbd'
-	smb_servername = 'smbd'
+	DHCPD_SERVERNAME = 'isc-dhcp-server'
+	HTTPD_SERVERNAME = 'apache2'
+	HTTPD_ENVFILE = '/etc/apache2/envvars'
+	MYSQL_SERVERNAME = 'mysql'
+	NAMED_SERVERNAME = 'bind9'
+	NETWORK_SERVERNAME = 'networking'
+	NETWORKMANAGER_SERVERNAME = 'network-manager'
+	# FIXME: change needed for debian: their service samba starts both smb and nmb
+	NMB_SERVERNAME = 'nmbd'
+	SMB_SERVERNAME = 'smbd'
 end
 
 # need to define it before we re-assign signals
 def signal_handler
 	caught_signal = 1
 
-	signal.trap "hup", "ignore"
-	signal.trap "term", "ignore"
-	signal.trap "int", "ignore"
+	Signal.trap "HUP", "IGNORE"
+	Signal.trap "TERM", "IGNORE"
+	Signal.trap "INT", "IGNORE"
 	pid = $$
-	process.kill "int", -pid
-	process.kill "term", -pid
+	Process.kill "INT", -pid
+	Process.kill "TERM", -pid
 	sleep 1
-	process.kill "kill", -pid
+	Process.kill "KILL", -pid
 	exit
 end
 
 def autodetect_network
 	cmds = ["/sbin/ip", "/bin/ip", "/usr/bin/ip", "/usr/sbin/ip"]
-	cmd = cmds.select { |f| file.exist? f }.first
+	cmd = cmds.select { |f| File.exist? f }.first
 
-	logfile = file.new "/root/ip-route.txt", "w"
+	logfile = File.new "/root/ip-route.txt", "w"
 
-	io.popen("#{cmd} route") do |f|
+	IO.popen("#{cmd} route") do |f|
 		until f.eof?
 			line = f.gets
 			logfile.write line
@@ -150,28 +150,28 @@ def autodetect_network
 	[nil, nil, nil]
 end
 
-# write the network information to the database
+# Write the network information to the database
 def autoconfigure_network
 	net, gw, device = autodetect_network
 	if net and gw
 		if @database
-			sth = @database.prepare("update #{database_name}.settings set value = ? where settings.name = 'net' limit 1 ;")
+			sth = @database.prepare("UPDATE #{DATABASE_NAME}.settings SET value = ? WHERE settings.name = 'net' LIMIT 1 ;")
 			sth.execute(net)
-			sth = @database.prepare("update #{database_name}.settings set value = ? where settings.name = 'gateway' limit 1 ;")
+			sth = @database.prepare("UPDATE #{DATABASE_NAME}.settings SET value = ? WHERE settings.name = 'gateway' LIMIT 1 ;")
 			sth.execute(gw)
 		end
 		# set the device here from the existing setup!
 		@network_device = device
-		puts "installer automatically determined that your router/gateway ip address is: #{net}.#{gw}, over #{device}"
-		puts "if this is incorrect, please report it, then run hda-change-gw after"
-		puts "installation is finished to set your gateway settings to the proper ip."
+		puts "Installer automatically determined that your router/gateway IP address is: #{net}.#{gw}, over #{device}"
+		puts "If this is incorrect, please report it, then run hda-change-gw after"
+		puts "installation is finished to set your gateway settings to the proper IP."
 	else
-		puts "warning: cannot autoconfigure the network!"
+		puts "WARNING: cannot autoconfigure the network!"
 	end
 end
 
 # global database handle for both functions below
-# fixme - install the mysql gem first, then require it??
+# FIXME - install the mysql gem first, then require it??
 @database = Mysql::init()
 
 @settings = {}
