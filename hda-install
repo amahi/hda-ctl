@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "4.2.5"
+$version = "4.2.7"
 
 # FIXME only eth0 supported for now - more hopefully in the future
 @network_device = "eth0"
@@ -44,20 +44,17 @@ OLDOUT = $stdout.dup
 
 @opt = ARGV.getopts("VfsdrDhnwmoyqi:p")
 
-# global variable
-@gems_list = {}
-
 def set_platform
-    issue = File.open("/etc/issue", "r");
+    issue = file.open("/etc/issue", "r");
     line = issue.gets;
     $platform = "unknown";
-    if ((line.include? "Ubuntu") or (line.include? "Debian"))
+    if ((line.include? "ubuntu") or (line.include? "debian"))
         $platform = "debian";
     end
-    if (line.include? "Fedora")
+    if (line.include? "fedora")
         $platform = "fedora";
     end
-    if (line.include? "CentOS")
+    if (line.include? "centos")
         $platform = "centos";
     end
 end
@@ -91,50 +88,50 @@ end
 # platform specific constants
 
 if fedora? or centos?
-	DHCPD_SERVERNAME = 'dhcpd'
-	HTTPD_SERVERNAME = 'httpd'
-	HTTPD_ENVFILE = '/etc/sysconfig/httpd'
-	MYSQL_SERVERNAME = 'mysqld'
-	NAMED_SERVERNAME = 'named'
-	NETWORK_SERVERNAME = 'network'
-	NETWORKMANAGER_SERVERNAME = 'NetworkManager'
-	NMB_SERVERNAME = 'nmb'
-	SMB_SERVERNAME = 'smb'
+	dhcpd_servername = 'dhcpd'
+	httpd_servername = 'httpd'
+	httpd_envfile = '/etc/sysconfig/httpd'
+	mysql_servername = 'mysqld'
+	named_servername = 'named'
+	network_servername = 'network'
+	networkmanager_servername = 'networkmanager'
+	nmb_servername = 'nmb'
+	smb_servername = 'smb'
 else
-	DHCPD_SERVERNAME = 'isc-dhcp-server'
-	HTTPD_SERVERNAME = 'apache2'
-	HTTPD_ENVFILE = '/etc/apache2/envvars'
-	MYSQL_SERVERNAME = 'mysql'
-	NAMED_SERVERNAME = 'bind9'
-	NETWORK_SERVERNAME = 'networking'
-	NETWORKMANAGER_SERVERNAME = 'network-manager'
-	# FIXME: change needed for debian: their service samba starts both smb and nmb
-	NMB_SERVERNAME = 'nmbd'
-	SMB_SERVERNAME = 'smbd'
+	dhcpd_servername = 'isc-dhcp-server'
+	httpd_servername = 'apache2'
+	httpd_envfile = '/etc/apache2/envvars'
+	mysql_servername = 'mysql'
+	named_servername = 'bind9'
+	network_servername = 'networking'
+	networkmanager_servername = 'network-manager'
+	# fixme: change needed for debian: their service samba starts both smb and nmb
+	nmb_servername = 'nmbd'
+	smb_servername = 'smbd'
 end
 
 # need to define it before we re-assign signals
 def signal_handler
 	caught_signal = 1
 
-	Signal.trap "HUP", "IGNORE"
-	Signal.trap "TERM", "IGNORE"
-	Signal.trap "INT", "IGNORE"
+	signal.trap "hup", "ignore"
+	signal.trap "term", "ignore"
+	signal.trap "int", "ignore"
 	pid = $$
-	Process.kill "INT", -pid
-	Process.kill "TERM", -pid
+	process.kill "int", -pid
+	process.kill "term", -pid
 	sleep 1
-	Process.kill "KILL", -pid
+	process.kill "kill", -pid
 	exit
 end
 
 def autodetect_network
 	cmds = ["/sbin/ip", "/bin/ip", "/usr/bin/ip", "/usr/sbin/ip"]
-	cmd = cmds.select { |f| File.exist? f }.first
+	cmd = cmds.select { |f| file.exist? f }.first
 
-	logfile = File.new "/root/ip-route.txt", "w"
+	logfile = file.new "/root/ip-route.txt", "w"
 
-	IO.popen("#{cmd} route") do |f|
+	io.popen("#{cmd} route") do |f|
 		until f.eof?
 			line = f.gets
 			logfile.write line
@@ -153,28 +150,28 @@ def autodetect_network
 	[nil, nil, nil]
 end
 
-# Write the network information to the database
+# write the network information to the database
 def autoconfigure_network
 	net, gw, device = autodetect_network
 	if net and gw
 		if @database
-			sth = @database.prepare("UPDATE #{DATABASE_NAME}.settings SET value = ? WHERE settings.name = 'net' LIMIT 1 ;")
+			sth = @database.prepare("update #{database_name}.settings set value = ? where settings.name = 'net' limit 1 ;")
 			sth.execute(net)
-			sth = @database.prepare("UPDATE #{DATABASE_NAME}.settings SET value = ? WHERE settings.name = 'gateway' LIMIT 1 ;")
+			sth = @database.prepare("update #{database_name}.settings set value = ? where settings.name = 'gateway' limit 1 ;")
 			sth.execute(gw)
 		end
 		# set the device here from the existing setup!
 		@network_device = device
-		puts "Installer automatically determined that your router/gateway IP address is: #{net}.#{gw}, over #{device}"
-		puts "If this is incorrect, please report it, then run hda-change-gw after"
-		puts "installation is finished to set your gateway settings to the proper IP."
+		puts "installer automatically determined that your router/gateway ip address is: #{net}.#{gw}, over #{device}"
+		puts "if this is incorrect, please report it, then run hda-change-gw after"
+		puts "installation is finished to set your gateway settings to the proper ip."
 	else
-		puts "WARNING: cannot autoconfigure the network!"
+		puts "warning: cannot autoconfigure the network!"
 	end
 end
 
 # global database handle for both functions below
-# FIXME - install the mysql gem first, then require it??
+# fixme - install the mysql gem first, then require it??
 @database = Mysql::init()
 
 @settings = {}
@@ -639,125 +636,6 @@ def do_monit
 	end
 end
 
-# NOTE: deprecated, kept just in case we need it some day
-def do_update_gem_system
-	message "Updating gem system"
-	gems = "gem update --system";
-	ret = do_system_multiple(gems)
-	puts "\tWARNING: gem update failed ...please run\n\t    #{gems}\n\t by hand until it installs correctly\n" unless ret
-end
-
-def run_gem_install(gem, version = nil)
-	ver = version ? " --version #{version} " : ""
-	#puts "system(\"gem install #{gem} #{ver} --no-rdoc --no-ri\")"
-	do_system_multiple "gem install #{gem} #{ver} --no-rdoc --no-ri"
-end
-
-def gem_list
-	res = {}
-	raw_list = open("|gem list") { |f| f.readlines }.map do |g|
-		if g =~ /\s*([^\s]+)\s*\(([^\)]+)\)/
-			gem = $1
-			versions = $2.split /[, ]+/
-			res[gem] = versions
-			# puts "DEBUG gem: \"#{gem}\" -> #{versions.inspect}"
-		end
-	end
-	res
-end
-
-# return true if there are no errors - pass thru false for errors
-def install_gem(gem, version = nil)
-	# puts gem.inspect
-	# puts version.inspect
-	usage if version && ! (version =~ /[0-9.]+/)
-	gems = @gem_list
-	if gems[gem]
-		# puts "installed"
-		if version && ! gems[gem].include?(version)
-			# puts "DEBUG: gem versions available: #{gems[gem].inspect}"
-			run_gem_install(gem, version)
-		end
-	else
-		# puts "NOT installed at all - installing ..."
-		run_gem_install(gem, version)
-	end
-	# return true for no errors
-	true
-end
-
-def do_install_gem(gem, version = nil)
-	ret = install_gem(gem, version)
-	puts "\t\tgem install failed for \"#{gem}\" ... try installing it by hand until it installs correctly" unless ret
-end
-
-def do_install_gems
-
-	if fedora? or centos?
-		system "rpm -q rubygem-rails-2.3.4"
-	else
-		ret = do_install_gem("rails", "2.3.4")
-	end
-	ret = $?
-	if (ret >> 8)
-		# not installed
-		ret = do_install_gem("rails", "2.3.4")
-	end
-
-	message "Installing pluginfactory ..."
-	ret = install_gem("pluginfactory")
-	puts "\t\tgem install failed for \"pluginfactory\" ... try installing it by hand until it installs correctly" unless ret
-	if debian?
-		do_install_gem("rake", "0.8.7")
-		do_install_gem("gd2", "1.1.1")
-		do_install_gem("gruff", "0.3.6")
-		do_install_gem("rdoc", "3.12")
-		do_install_gem("sinatra", "1.0")
-		do_install_gem("passenger", "3.0.0")
-		do_install_gem("hoe", "2.6.2")
-		do_install_gem("spruz", "0.1.5")
-	end
-end
-
-def do_register_installed_apps
-
-	files = Dir.glob "/var/hda/platform/apps/*/app-register"
-
-	files.each do |file|
-		do_system_silent "bash #{file}"
-	end
-
-end
-
-def install_amahi_apps
-
-	# FIXME - register installed apps first, in case they
-	# were installed at a time mysql was not available
-	do_register_installed_apps
-
-	rpms = Array.new
-	rpms << "hda-app-amahitunes hda-app-photosorter hda-app-recipes"
-	rpms << "hda-app-slideshow hda-app-torrents hda-app-webcal hda-app-weightwatcher"
-	rpms << "hda-theme-iHama hda-theme-iHama-candy hda-theme-agedashi"
-	set = ""
-	rpms.each do |set|
-
-		do_system_silent "killall yum-updatesd"
-		message "\t#{set} ..."
-		puts "YUM INSTALL OF: #{set}";
-		do_system_silent "killall yum-updatesd"
-		do_system_silent "killall yum"
-
-		ret = do_system_multiple("yum -y install #{set}")
-		puts "\tWARNING: rpm install failed ... please run\n\tyum -y install #{set}\n\n\tby hand until it installs correctly" unless ret
-
-	end
-
-	# register them again, just in  case
-	do_register_installed_apps
-
-end
-
 def mark_as_installed
 
 	f = "/var/cache/hda-ctl.cache"
@@ -799,6 +677,7 @@ def do_install_rpms
 	rpms << "hddtemp ruby-augeas"
 	rpms << "samba httpd cadaver patch sudo wol bc"
 	rpms << "fpaste perl-DBI rsync wget curl"
+	rpms << "v8"
 
 	list = rpms.join(' ').split(' ')
 	to_install = list.delete_if { |pname| installed.select{|p| p =~ /^#{pname}-[0-9]/} != [] }
@@ -889,8 +768,6 @@ def do_full_install(hda)
 		end
 	end
 
-	@gem_list = gem_list
-
 	if fedora? or centos?
 		message "Stopping background software updates ..."
 		# stop background yum to prevent waits - silently because they may not be there
@@ -935,11 +812,6 @@ def do_full_install(hda)
 
 	# create greyhole db
 	initialize_greyhole
-
-	# not needed now that we package the gems with the platform in f17
-	# install stuff for rails
-	# message "Installing Ruby Gems (may take a while depending on your server speed)."
-	# do_install_gems unless @opt["r"]
 
 	# initialize rails and database
 	message "Initializing Ruby on Rails and DB"
@@ -999,10 +871,6 @@ def do_full_install(hda)
 	# NOTE: important to do this before the apps are
 	# installed
 	mark_as_installed
-
-	# This is being phased out!
-	# message "Installing HDA apps\n\t(may take a while depending on your download speed)."
-	# install_amahi_apps
 
 	# let the games begin!
 	message "Starting the rest of the services ..."
