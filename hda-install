@@ -45,7 +45,7 @@ OLDOUT = $stdout.dup
 @opt = ARGV.getopts("VfsdrDhnwmoyqi:p")
 
 def set_platform
-    issue = file.open("/etc/issue", "r");
+    issue = File.open("/etc/issue", "r");
     line = issue.gets;
     $platform = "unknown";
     if ((line.include? "ubuntu") or (line.include? "debian"))
