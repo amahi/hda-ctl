@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "4.2.7"
+$version = "4.2.8"
 
 # FIXME only eth0 supported for now - more hopefully in the future
 @network_device = "eth0"
@@ -672,7 +672,7 @@ def do_install_rpms
 
 	rpms = []
 	rpms << "fedora-release yum-plugin-fastestmirror"
-	rpms << "mysql-server perl-libwww-perl dnsmasq"
+	rpms << "mariadb-server perl-libwww-perl dnsmasq"
 	rpms << "php dhclient monit perl-Authen-PAM"
 	rpms << "hddtemp ruby-augeas"
 	rpms << "samba httpd cadaver patch sudo wol bc"
