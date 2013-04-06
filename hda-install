@@ -672,7 +672,7 @@ def do_install_rpms
 
 	rpms = []
 	rpms << "fedora-release yum-plugin-fastestmirror"
-	rpms << "mysql-server perl-libwww-perl dnsmasq"
+	rpms << "mariadb-server perl-libwww-perl dnsmasq"
 	rpms << "php dhclient monit perl-Authen-PAM"
 	rpms << "hddtemp ruby-augeas"
 	rpms << "samba httpd cadaver patch sudo wol bc"
