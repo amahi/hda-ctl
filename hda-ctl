@@ -800,7 +800,7 @@ sub print_one_host_dnsmasq {
 	my $domain = shift;
 	my $dhcp_lease_time = $settings{'dhcp_lease_time'} || $default_dhcp_lease;
 	my $ip = $settings{'net'} . "." . $address;
-	print $file "dhcp-host=%s,%s,%s,%s\n", $mac, $ip, $host, $dhcp_lease_time;
+	printf $file "dhcp-host=%s,%s,%s,%s\n", $mac, $ip, $host, $dhcp_lease_time;
 }
 
 sub print_static_dhcp_dnsmasq {
