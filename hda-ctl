@@ -79,7 +79,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "4.2.9";
+my $version = "4.2.11";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -103,7 +103,7 @@ my $network_service;
 my $dhcp_service;
 
 ## process args
-my $programd  = $0; 
+my $programd  = $0;
 $programd =~ s%^.*/%%;
 my $program   = $programd;
 $program  =~ s/d$//;
@@ -810,8 +810,8 @@ sub print_static_dhcp_dnsmasq {
 	$sth->execute();
 
 	my @row = ();
-	while ( @row = $sth->fetchrow_array ) {
-		&print_one_host_dnsmasq ($file, $row[0], $row[1], $row[2], $settings {'domain'});
+	while (@row = $sth->fetchrow_array) {
+		&print_one_host_dnsmasq($file, $row[0], $row[1], $row[2], $settings {'domain'});
 	}
 	$sth->finish();
 }
@@ -835,7 +835,6 @@ sub print_dnsmasq_common_conf {
 }
 
 sub print_dnsmasq_dns_conf {
-	
 	open(my $dnsmasq, ">", $file_dnsmasq_dns);
 
 	my $domain = $settings{'domain'};
@@ -877,7 +876,8 @@ sub print_dnsmasq_dns_conf {
 		# printf ($dnsmasq "local=\/%s\/%s\n", $domain, $self) unless $dnsmasq_query_local_upstream;
 		printf ($dnsmasq "address=\/%s\/%s\n", $domain, $self) if $dnsmasq_resolve_catch_all;
 		printf $dnsmasq "ptr-record=%s,hda.%s\n", &reverse_net($self), $domain;
-		&print_aliases_dnsmasq ($dnsmasq);
+		&print_aliases_dnsmasq($dnsmasq);
+		&print_hosts_dnsmasq($dnsmasq);
 	} else {
 		printf $dnsmasq "# dnsmasq is not being used for DNS resolution\n";
 		printf $dnsmasq "port=0\n";
@@ -889,7 +889,6 @@ sub print_dnsmasq_dns_conf {
 }
 
 sub print_dnsmasq_dhcp_conf {
-	
 	open(my $dnsmasq, ">", $file_dnsmasq_dhcp);
 
 	my $domain = $settings{'domain'};
@@ -949,8 +948,24 @@ sub print_dnsmasq_dhcp_conf {
 	&mv ($file_dnsmasq_dhcp, "/etc/dnsmasq.d/");
 }
 
+sub print_hosts_dnsmasq {
+	my $file = shift;
+
+	my $sth = $dbh->prepare("SELECT Host, Address FROM hosts order by Host");
+	$sth->execute();
+
+	my @row = ();
+	while (@row = $sth->fetchrow_array) {
+		my $host = $row[0];
+		my $ip = $settings{'net'} . "." . $row[1];
+		my $host_fqdn = $host . "." . $settings{'domain'};
+		printf $file "address=\/%s\/%s\/%s\n", $host, $host_fqdn, $ip;
+	}
+	$sth->finish();
+}
+
 sub print_aliases_dnsmasq {
-	my $name2addr = shift;
+	my $file = shift;
 
 	my $sth = $dbh->prepare("SELECT name, address FROM dns_aliases");
 	$sth->execute();
@@ -967,15 +982,15 @@ sub print_aliases_dnsmasq {
 		# if empty, point to the self-address host
 		if ($address =~ /^\s*$/) {
 			my $default_alias_ip = $settings{'net'} . "." . $settings{'self-address'};
-			printf $name2addr "address=\/%s\/%s\/%s\n", $alias, $alias_fqdn, $default_alias_ip;			
+			printf $file "address=\/%s\/%s\/%s\n", $alias, $alias_fqdn, $default_alias_ip;
 		} else {
 			# if it has just an bunch of digits check if it's a simple ip
 			if ($address =~ /^\s*\d+\s*$/) {
 				my $ip = int($address);
 				if (($ip > 0) && ($ip < 255)) {
 					my $full_ip = $settings{'net'} . "." . $ip;
-					printf $name2addr "ptr-record=%s,%s\n", &reverse_net($full_ip), $alias_fqdn;
-					printf $name2addr "address=\/%s\/%s\/%s\n", $alias, $alias_fqdn, $full_ip;
+					printf $file "ptr-record=%s,%s\n", &reverse_net($full_ip), $alias_fqdn;
+					printf $file "address=\/%s\/%s\/%s\n", $alias, $alias_fqdn, $full_ip;
 				} else {
 					&log ("skipping alias '$alias' for address '$address' (too large)")
 				}
@@ -983,12 +998,12 @@ sub print_aliases_dnsmasq {
 				# else check if it's in the form of an address
 				if ($address =~ /^\s*\d+\.\d+\.\d+\.\d+\s*$/) {
 					# FIXME: this should have some more checking.
-					printf $name2addr "ptr-record=%s,%s\n", &reverse_net($address), $alias_fqdn;
-					printf $name2addr "address=\/%s\/%s\/%s\n", $alias, $alias_fqdn, $address;
+					printf $file "ptr-record=%s,%s\n", &reverse_net($address), $alias_fqdn;
+					printf $file "address=\/%s\/%s\/%s\n", $alias, $alias_fqdn, $address;
 				} else {
 					# else assume is a cname - needs error checking
 					# FIXME - this has the potential to generate bad config files. so it's disabled.
-					# printf $name2addr "cname=%s,%s\n", $alias, $address
+					# printf $file "cname=%s,%s\n", $alias, $address
 					&log ("skipping alias '$alias' for address '$address' (the latter does not parse as an ip address)");
 
 				}
@@ -1015,7 +1030,6 @@ sub generate_dns_settings {
 		&print_zone_files ();
 	}
 }
- 
 
 sub generate_files {
 
@@ -1151,7 +1165,7 @@ sub restart_named {
 			&log ("$named_service restarted successfully");
 		}
 	} else {
-		&log("named not enabled");	
+		&log("named not enabled");
 	}
 }
 
@@ -1163,7 +1177,7 @@ sub restart_dnsmasq {
 			&log ("dnsmasq restarted successfully");
 		}
 	} else {
-		&log("dnsmasq not enabled");	
+		&log("dnsmasq not enabled");
 	}
 }
 
@@ -1348,7 +1362,7 @@ sub get_time_offset {
 	my $wasnegative = 0;
 
 	open TIME, "date +%z |" or &logdie("Failed to open pipe in get_time_offset: $!");
-	my $time = <TIME>; 
+	my $time = <TIME>;
 	close TIME;
 
 	if ($time < 0){
@@ -1356,7 +1370,7 @@ sub get_time_offset {
 		$time *= -1;
 	}
 	$time =~ s/0//g;
-	
+
 	my $timeoffset = $time * 3600;
 
 	if ($wasnegative){
