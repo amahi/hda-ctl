@@ -1,4 +1,4 @@
-VERSION=4.2.12
+VERSION=4.2.13
 RPMBUILDDIR=$(HOME)/rpmbuild
 
 # SIGN=--sign

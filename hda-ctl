@@ -79,7 +79,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "4.2.12";
+my $version = "4.2.13";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -389,7 +389,7 @@ sub fill_hosts_table {
 		$host[$i] = sprintf ("h%03d", $i);
 	}
 
-	my $sth = $dbh->prepare("SELECT Host, Address FROM hosts");
+	my $sth = $dbh->prepare("SELECT Name, Address FROM hosts");
 	$sth->execute();
 
 	my @row = ();
@@ -602,7 +602,7 @@ sub print_one_host {
 sub print_dhcp_conf_hosts {
 	my $file = shift;
 
-	my $sth = $dbh->prepare("SELECT Host, MAC, Address FROM hosts order by Host");
+	my $sth = $dbh->prepare("SELECT Name, MAC, Address FROM hosts order by Name");
 	$sth->execute();
 
 	my @row = ();
@@ -806,7 +806,7 @@ sub print_one_host_dnsmasq {
 sub print_static_dhcp_dnsmasq {
 	my $file = shift;
 
-	my $sth = $dbh->prepare("SELECT Host, MAC, Address FROM hosts order by Host");
+	my $sth = $dbh->prepare("SELECT Name, MAC, Address FROM hosts order by Name");
 	$sth->execute();
 
 	my @row = ();
@@ -951,7 +951,7 @@ sub print_dnsmasq_dhcp_conf {
 sub print_hosts_dnsmasq {
 	my $file = shift;
 
-	my $sth = $dbh->prepare("SELECT Host, Address FROM hosts order by Host");
+	my $sth = $dbh->prepare("SELECT Name, Address FROM hosts order by Name");
 	$sth->execute();
 
 	my @row = ();

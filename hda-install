@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "4.2.12"
+$version = "4.2.13"
 
 # FIXME only eth0 supported for now - more hopefully in the future
 @network_device = "eth0"
