@@ -56,7 +56,7 @@ sub get_db_settings {
 
 sub get_db_hosts {
 
-	my $sth = $dbh->prepare("SELECT host, address, mac FROM hosts");
+	my $sth = $dbh->prepare("SELECT name, address, mac FROM hosts");
 	$sth->execute();
 
 	print "Static hosts:\n";
