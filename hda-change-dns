@@ -63,9 +63,9 @@ sub ConnectToDatabase
 # Modify the database with the settings we previously calculated.
 sub ModifyDatabase
 {
-	$sth = $dbhM->prepare("UPDATE $m_database.settings SET value = ? WHERE settings.name = 'external-dns1' LIMIT 1 ;");
+	$sth = $dbhM->prepare("UPDATE $m_database.settings SET value = ? WHERE settings.name = 'dns_ip_1' LIMIT 1 ;");
 	$sth->execute($m_dns1) or die "Couldn't execute statement: " . $sth->errstr;
-	$sth = $dbhM->prepare("UPDATE $m_database.settings SET value = ? WHERE settings.name = 'external-dns2' LIMIT 1 ;");
+	$sth = $dbhM->prepare("UPDATE $m_database.settings SET value = ? WHERE settings.name = 'dns_ip_2' LIMIT 1 ;");
 	$sth->execute($m_dns2) or die "Couldn't execute statement: " . $sth->errstr;
 	print "Network settings were successfully applied.\n"
 }

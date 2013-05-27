@@ -228,21 +228,11 @@ sub print_named_conf {
 	my $dyn_lo = $net . "." . $settings{'dyn_lo'};
 	my $dyn_hi = $net . "." . $settings{'dyn_hi'};
 	my $extdns1 = $gw;
-	my $extdns2 = "";
+	my $extdns2 = "8.8.8.8"; # some default, just in case
 
-	if (defined($settings{'external-dns1'})) {
-		$extdns1 = $settings{'external-dns1'};
-	} elsif (defined($settings{'dns1'})) {
-		$extdns1 = $settings{'dns1'};
-	}
+	$extdns1 = $settings{'dns_ip_1'} if (defined($settings{'dns_ip_1'}));
 
-	if (defined($settings{'external-dns2'})) {
-		$extdns2 = $settings{'external-dns2'};
-		$extdns2 .= ";";
-	} elsif (defined($settings{'dns1'})) {
-		$extdns2 = $settings{'dns2'};
-		$extdns2 .= ";";
-	}
+	$extdns2 = ($settings{'dns_ip_2'} . ";") if (defined($settings{'dns_ip_2'}));
 
 	printf $hda "# automatically generated file by hda-ctl\n";
 	printf $hda "options {\n";
@@ -604,8 +594,8 @@ sub print_fedora_network {
 	my $net = $settings{'net'};
 	my $id = $settings{'hda-id'};
 	my $gw = $settings{'gateway'};
-	my $dns1 = $settings{'external-dns1'};
-	my $dns2 = $settings{'external-dns2'};
+	my $dns1 = $settings{'dns_ip_1'};
+	my $dns2 = $settings{'dns_ip_2'};
 
 	my $prefix = "/etc/sysconfig/network-scripts";
 	my $ifcfg = "$prefix/$file_ifcfg";
@@ -665,8 +655,8 @@ sub print_debian_network {
 	my $net = $settings{'net'};
 	my $id = $settings{'hda-id'};
 	my $gw = $settings{'gateway'};
-	my $dns1 = $settings{'external-dns1'};
-	my $dns2 = $settings{'external-dns2'};
+	my $dns1 = $settings{'dns_ip_1'};
+	my $dns2 = $settings{'dns_ip_2'};
 
         my $ifcfg = "/etc/network/interfaces";
 
@@ -737,7 +727,7 @@ sub print_dhcp_conf {
 	printf $dhcpd "\toption subnet-mask %s;\n", $settings{'netmask'};
 	printf $dhcpd "\toption domain-name \"%s\";\n", $settings{'domain'};
 	if ($use_opendns_secondary) {
-		printf $dhcpd "\toption domain-name-servers %s, %s;\n", $dns1, $settings{'external-dns1'};
+		printf $dhcpd "\toption domain-name-servers %s, %s;\n", $dns1, $settings{'dns_ip_1'};
 	} else {
 		printf $dhcpd "\toption domain-name-servers %s, %s;\n", $dns1, $dns1;
 	}

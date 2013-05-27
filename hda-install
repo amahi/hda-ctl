@@ -1006,8 +1006,8 @@ def do_network
 	net = @settings['net']
 	id = @settings['hda-id']
 	gw = @settings['gateway']
-	dns1 = @settings['external-dns1']
-	dns2 = @settings['external-dns2']
+	dns1 = @settings['dns_ip_1']
+	dns2 = @settings['dns_ip_2']
 
 	# set up the network to be static via NetworkManager
 	ip = "#{net}.#{self_address}"
