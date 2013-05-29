@@ -84,7 +84,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "4.2.14";
+my $version = "4.2.15";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -1119,13 +1119,13 @@ sub do_periodic_action {
 sub network_setting_enabled {
 	my $setting = shift;
 
-	my $sth = $dbh->prepare("SELECT value from settings WHERE kind = 'network' AND name = ?; ")
+	my $sth = $dbh->prepare("SELECT value from settings WHERE name = ?; ")
 		or &logdie("Couldn't prepare statement: " . $dbh->errstr);
 	$sth->execute($setting);
 	my @data = $sth->fetchrow_array();
 
-	# default to not enabled
-	my $result = 0;
+	# default to enabled
+	my $result = 1;
 	if (@data) {
 		$result = ($data[0] == 1);
 		if ($result) {
