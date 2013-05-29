@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 #
 # Amahi Home Server
-# Copyright (C) 2007-2009 Amahi Team
+# Copyright (C) 2007-2013 Amahi Team
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License v3
@@ -1006,8 +1006,17 @@ def do_network
 	net = @settings['net']
 	id = @settings['hda-id']
 	gw = @settings['gateway']
-	dns1 = @settings['dns_ip_1']
-	dns2 = @settings['dns_ip_2']
+	dns = @settings['dns']
+	if dns && dns == 'opendns'
+		dns1 = '208.67.222.222'
+		dns2 = '208.67.220.220'
+	elsif dns && dns == 'google'
+		dns1 = '8.8.8.8'
+		dns2 = '8.8.4.4'
+	else
+		dns1 = @settings['dns_ip_1']
+		dns2 = @settings['dns_ip_2']
+	end
 
 	# set up the network to be static via NetworkManager
 	ip = "#{net}.#{self_address}"
@@ -1028,7 +1037,6 @@ def do_network
 
 	# ensure it's readable!
 	File.chmod 0644, rslv
-
 end
 
 def disable_dnssec
