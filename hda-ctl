@@ -26,6 +26,7 @@ use strict;
 use DBI();
 use Getopt::Std;
 use LWP::Simple;
+use LWP::Protocol::https;
 use URI::Escape;
 use POSIX qw(strftime);
 use POSIX qw(mkfifo);
@@ -61,10 +62,12 @@ our ($DEVICE, $NETMASK_SIZE, $NET_START, $DYN_LO, $DYN_HI, $USE_OPENDNS_SECONDAR
 
 my $conf_file = "/etc/hda-ctl.conf";
 my $return = '';
-unless ($return = do $conf_file) {
-	warn "hda-ctl: couldn't parse settings in $conf_file: $@" if $@;
-        warn "hda-ctl: couldn't read settings in $conf_file: $!" unless defined $return;
-        warn "hda-ctl: couldn't run settings in $conf_file: $@ - $!" unless $return;
+if (-e $conf_file) {
+	unless ($return = do $conf_file) {
+		warn "hda-ctl: couldn't parse settings in $conf_file: $@" if $@;
+		warn "hda-ctl: couldn't read settings in $conf_file: $!" unless defined $return;
+		warn "hda-ctl: couldn't run settings in $conf_file: $@ - $!" unless $return;
+	}
 }
 
 # pick up the default route device
@@ -84,7 +87,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "4.2.15";
+my $version = "4.2.16";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -856,8 +859,6 @@ sub print_dnsmasq_dns_conf {
 	my $dns1 = $self;
 	my $dyn_lo = $net . "." . $settings{'dyn_lo'};
 	my $dyn_hi = $net . "." . $settings{'dyn_hi'};
-	my $extdns1 = $gw;
-	my $extdns2 = "8.8.8.8"; # some default, just in case
 	my $time_offset = &get_time_offset();
 	my ($extdns1, $extdns2) = &resolve_dns_ips();
 
@@ -898,8 +899,6 @@ sub print_dnsmasq_dhcp_conf {
 	my $dns1 = $self;
 	my $dyn_lo = $net . "." . $settings{'dyn_lo'};
 	my $dyn_hi = $net . "." . $settings{'dyn_hi'};
-	my $extdns1 = $gw;
-	my $extdns2 = "8.8.8.8"; # default, just in case
 	my $time_offset = &get_time_offset();
 	my ($extdns1, $extdns2) = &resolve_dns_ips();
 

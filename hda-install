@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "4.2.15"
+$version = "4.2.16"
 
 # FIXME only eth0 supported for now - more hopefully in the future
 @network_device = "eth0"
@@ -672,7 +672,7 @@ def do_install_rpms
 
 	rpms = []
 	rpms << "fedora-release yum-plugin-fastestmirror"
-	rpms << "mariadb-server perl-libwww-perl dnsmasq"
+	rpms << "mariadb-server perl-libwww-perl perl-LWP-Protocol-https dnsmasq"
 	rpms << "php dhclient monit perl-Authen-PAM"
 	rpms << "hddtemp ruby-augeas"
 	rpms << "samba httpd cadaver patch sudo wol bc"
@@ -1021,7 +1021,12 @@ def do_network
 	# set up the network to be static via NetworkManager
 	ip = "#{net}.#{self_address}"
 	gwy = "#{net}.#{gw}"
-	setup_network_manager(ip, gwy, dns1, dns2)
+	begin
+		setup_network_manager(ip, gwy, dns1, dns2)
+	rescue
+		puts "WARNING: cannot setup network manager!"
+		puts "WARNING: setup your HDA with a static IP!"
+	end
 
 	rslv = "/etc/resolv.conf"
 	rslv_fh = nil
