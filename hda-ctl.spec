@@ -1,4 +1,4 @@
-%global rubyabi 1.9.1
+%global rubyrelease 2.0.0
 %define systemd_dir %{_prefix}/lib/systemd/system
 
 Name:           hda-ctl
@@ -15,7 +15,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires: hda-platform >= 6.0.0
 Requires: dnsmasq, sudo >= 1.7.2
 Requires: mariadb-server samba httpd
-Requires: ruby(abi) = %{rubyabi}
+Requires: ruby(release) = %{rubyrelease}
 Requires: monit perl-Authen-PAM fpaste
 Requires: ruby-mysql ruby-libs ruby-augeas rubygem(bundler) rubygem(ruby-dbus)
 Requires: perl-Authen-PAM perl-libwww-perl perl-LWP-Protocol-https wget curl
