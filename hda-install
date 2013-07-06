@@ -676,7 +676,7 @@ def do_install_rpms
 	rpms << "php dhclient monit perl-Authen-PAM"
 	rpms << "hddtemp ruby-augeas"
 	rpms << "samba httpd cadaver patch sudo wol bc"
-	rpms << "fpaste perl-DBI rsync wget curl"
+	rpms << "fpaste perl-DBI rsync wget curl cronie pmount"
 	rpms << "v8"
 
 	list = rpms.join(' ').split(' ')
