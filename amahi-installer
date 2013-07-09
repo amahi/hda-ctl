@@ -20,17 +20,18 @@
 
 use strict;
 use Getopt::Std;
+use POSIX qw(strftime);
 
 our($opt_f, $opt_h, $opt_q);
 getopts('fhq');
 
 my $LOG = "/tmp/amahi-ruby-install.log";
+my $ICF = "/var/hda/install-code.txt";
 my $platform = "EE";
 
 # FIXME support ubuntu too
 sub get_platform {
-	open (my $file, "< /etc/issue") or
-		return "EE";
+	open (my $file, "< /etc/issue") or return "EE";
 	my $p = <$file>;
 	chomp $p;
 	if ($p =~ /Fedora/) {
@@ -124,17 +125,15 @@ sub install_rpm_packages() {
 	&do_system_multiple("yum -y install ruby-mysql") unless &package_installed("ruby-mysql");
 	&do_system_multiple("yum -y install rubygem-rack") unless &package_installed("rubygem-rack");
 	&do_system_multiple("yum -y install rubygem-sinatra") unless &package_installed("rubygem-sinatra");
-	#&do_system_multiple("gem uninstall --version 1.2.1 rack");
 }
 
 sub install_packages() {
 	if ($platform eq "fedora") {
-		install_rpm_packages();
+		&install_rpm_packages();
 	}
 }
 
 &do_basic_checks();
-install_packages();
 
 
 printf "Starting the Amahi web-based installer (this may take a while) ...\n" unless ($opt_q);
@@ -151,6 +150,16 @@ unless ($opt_q) {
 	printf "\t- if you think it's a bug, file a bug in http://bugs.amahi.org/\n";
 }
 
-&daemonize;
-
-exec "/usr/share/hda-ctl/web-installer/install-server &> $LOG";
+if (-e $ICF) {
+	# delayed express install
+	open(my $aicf, "< $IFC") || die ("cannot open the install code $IFC: $!");
+	my $aic = <$aicf>;
+	chomp($aic) = <$aicf>;
+	my $logfile = strftime("/root/hda-install-express-%Y%m%d-%H%M%S.log", localtime);
+	# run the installer!
+	exec "echo hda-install $aic &> $logfile";
+} else {
+	&install_packages();
+	&daemonize;
+	exec "/usr/share/hda-ctl/web-installer/install-server &> $LOG";
+}
