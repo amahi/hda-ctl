@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "4.2.22"
+$version = "4.2.27"
 
 # FIXME only eth0 supported for now - more hopefully in the future
 @network_device = "eth0"
@@ -682,9 +682,6 @@ def do_install_rpms
 	list = rpms.join(' ').split(' ')
 	to_install = list.delete_if { |pname| installed.select{|p| p =~ /^#{pname}-[0-9]/} != [] }
 
-	# FIXME force this for F12 6/16/10 due to a incomplete dep missing in dhcp
-	to_install << ["dhcp", "dhclient"]
-
 	if to_install.size == 0
 		message "No packages needed installation"
 		return
@@ -780,7 +777,7 @@ def do_full_install(hda)
 
 		setup_default_homepage
 
-		rpms_to_remove = ["gnome-packagekit", "setroubleshoot setroubleshoot-server setroubleshoot-plugins"]
+		rpms_to_remove = []
 		rpms_to_remove.each do |rpm|
 			do_system_silent "killall yum-updatesd"
 			puts "RPM UNINSTALL OF: #{rpm}";

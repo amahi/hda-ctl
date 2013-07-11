@@ -1,4 +1,4 @@
-VERSION=4.2.22
+VERSION=4.2.27
 RPMBUILDDIR=$(HOME)/rpmbuild
 
 # SIGN=--sign
@@ -13,10 +13,9 @@ dist: hda-ctl-hup
 	        debian hda-install-gem hda-ctl.service hda-ctl.logrotate \
 		amahi-hda httpd samba desktop-icons hda-ctl.sysconfig \
 		hda-settings hda-register-apps hda-install-file hda-alias \
-		hda-update hda-change-gw hda-change-dns amahi-installer.initscript \
+		hda-update hda-change-gw hda-change-dns amahi-installer.service \
 		web-installer amahi-installer hda-php-zone-change hda-fix-sudoers \
-		hda-upgrade-amahi5-to-amahi6 hda-privs networking.ubuntu \
-		release/hda-ctl-$(VERSION)/
+		hda-privs networking.ubuntu 70-amahi.preset release/hda-ctl-$(VERSION)/
 	(cd release && tar -czvf hda-ctl-$(VERSION).tar.gz hda-ctl-$(VERSION))
 	(cd release && rm -rf hda-ctl-$(VERSION))
 update-header:

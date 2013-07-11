@@ -1,0 +1,18 @@
+# See this for details: https://fedoraproject.org/wiki/Starting_services_by_default
+
+# Amahi services
+enable amahi-installer.service
+enable hda-ctl.service
+
+# things that make sense be disabled in Amahi systems
+disable firewalld.service
+disable sendmail.service
+
+disable initial-setup-graphical.service
+disable initial-setup-text.service
+
+disable gpm.*
+disable gpsd.*
+
+disable packagekit-offline-update.service
+disable PackageKit.service

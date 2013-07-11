@@ -1,0 +1,11 @@
+[Unit]
+Description=Amahi HDA installer service
+Wants=network.target
+After=syslog.target network.target
+
+[Service]
+Type=oneshot
+ExecStart=-/usr/bin/amahi-installer
+
+[Install]
+WantedBy=multi-user.target

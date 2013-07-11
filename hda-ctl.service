@@ -12,6 +12,7 @@ EnvironmentFile=-/etc/sysconfig/hda-ctl
 ExecStart=/usr/bin/hda-ctl $HDA_CTL_OPTIONS
 ExecReload=/usr/bin/kill -HUP $MAINPID
 StandardError=null
+Restart=always
 
 [Install]
 WantedBy=multi-user.target

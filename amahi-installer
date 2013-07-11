@@ -22,8 +22,8 @@ use strict;
 use Getopt::Std;
 use POSIX qw(strftime);
 
-our($opt_f, $opt_h, $opt_q);
-getopts('fhq');
+our($opt_f, $opt_h);
+getopts('fh');
 
 my $LOG = "/tmp/amahi-ruby-install.log";
 my $ICF = "/var/hda/install-code.txt";
@@ -44,12 +44,19 @@ sub get_platform {
 	return "EE";
 }
 
-sub daemonize {
+# sleep and exit, so that it's not restarted too quickly
+sub sleep_and_exit {
+	my $code = shift;
 
+	sleep(2);
+	exit($code);
+}
+
+sub daemonize {
 	my $pid = fork;
 	if ($pid < 0) {
 		print STDERR "ERROR: can not fork/detach ($!)\n";
-		exit -1;
+		&sleep_and_exit(-1);
 	} elsif ($pid) {
 		# parent simply exit
 		exit 0;
@@ -88,22 +95,22 @@ sub do_basic_checks {
 		printf "usage: amahi-installer [-f|-h]\n";
 		printf "\t -h  - help\n";
 		printf "\t -f  - force\n";
-		exit (1);
+		&sleep_and_exit(1);
 	}
 	if ($euid != 0) {
 		printf "ERROR: this program must be run as \"root\". type \"su\" (to Switch User to root),\n";
 		printf "       then input your root password, then run this program again.\n\n";
 		printf "       \$ su\n";
 		printf "       Password:         (enter your root password)\n";
-		exit (1);
+		&sleep_and_exit(1);
 	}
 	if (-e "/etc/sysconfig/amahi-hda") {
 		if ($opt_f) {
 			printf "WARNING: this system is already intialized for Amahi use\n";
 		} else {
 			# exit silently
-			printf ": this system is already intialized for Amahi use. (use -f to force at your own risk)\n" unless ($opt_q);
-			exit (0);
+			printf "the system already has Amahi installed.\n";
+			&sleep_and_exit(0);
 		}
 	}
 }
@@ -135,31 +142,31 @@ sub install_packages() {
 
 &do_basic_checks();
 
-
-printf "Starting the Amahi web-based installer (this may take a while) ...\n" unless ($opt_q);
-
-
-unless ($opt_q) {
-	# quiet mode
-	printf "Access it at this URL (Shift-Control-Click on the link):\n\n";
-	printf "\thttp://localhost:2000\n\n";
-	printf "For help:\n";
-	printf "\t- visit http://talk.amahi.org for live community help\n";
-	printf "\t- look for errors at the bottom of /root/hda-install-*.log\n";
-	printf "\t- paste any errors in http://paste.amahi.org/\n";
-	printf "\t- if you think it's a bug, file a bug in http://bugs.amahi.org/\n";
-}
-
-if (-e $ICF) {
+if (-e "$ICF") {
 	# delayed express install
-	open(my $aicf, "< $IFC") || die ("cannot open the install code $IFC: $!");
+	printf "starting the express installer.\n";
+	open(my $aicf, "< $ICF") || die ("cannot open the install code $ICF: $!");
 	my $aic = <$aicf>;
-	chomp($aic) = <$aicf>;
-	my $logfile = strftime("/root/hda-install-express-%Y%m%d-%H%M%S.log", localtime);
+	chomp($aic);
+	my $logfile = strftime("/root/hda-install-express-%y%m%d-%H%M%S.log", localtime);
 	# run the installer!
-	exec "echo hda-install $aic &> $logfile";
-} else {
-	&install_packages();
-	&daemonize;
-	exec "/usr/share/hda-ctl/web-installer/install-server &> $LOG";
+	my $result = system("hda-install $aic &> $logfile");
+	if ($result == 0) {
+		printf "Amahi express installer finished successfully. Rebooting.\n";
+		system("reboot");
+	} else {
+		printf "WARNING: express installer failed to start!\n";
+	}
 }
+
+printf "starting the web-based installer at:\n";
+printf "\thttp://localhost:2000\n\n";
+printf "For help:\n";
+printf "\t- visit http://talk.amahi.org for live community help\n";
+# if the above fails, still run the web installer
+&install_packages();
+&daemonize;
+exec("/usr/share/hda-ctl/web-installer/install-server &> $LOG");
+# sleep, in case it fails
+warn "FATAL: web installer failed to start!\n";
+&sleep_and_exit(-1);
