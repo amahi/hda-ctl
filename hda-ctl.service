@@ -1,8 +1,8 @@
 [Unit]
 Description=Amahi HDA controller
 ConditionPathExists=/usr/bin/hda-ctl
-Requires=syslog.target network.target smb.service dnsmasq.service NetworkManager.service
-After=syslog.target network.target smb.service dnsmasq.service NetworkManager.service
+Requires=rsyslog.service network.target smb.service dnsmasq.service NetworkManager.service
+After=network.target rsyslog.service NetworkManager.service dnsmasq.service
 Before=monit.service
 
 [Service]

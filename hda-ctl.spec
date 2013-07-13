@@ -1,7 +1,7 @@
 %global rubyrelease 2.0.0
 
 Name:           hda-ctl
-Version: 4.2.28
+Version: 4.2.30
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
@@ -151,5 +151,5 @@ fi
 - add hda-install skeleton
 * Sat Dec 09 2006 carlos puchol <cpg+git@amahi.org>
 - initial file
-* Tue Feb 20 2006 carlos puchol <cpg+git@amahi.org>
+* Mon Feb 20 2006 carlos puchol <cpg+git@amahi.org>
 - add hda-ctl-hup, with uid
