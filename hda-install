@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "4.2.27"
+$version = "4.2.28"
 
 # FIXME only eth0 supported for now - more hopefully in the future
 @network_device = "eth0"
@@ -518,29 +518,26 @@ def check_install_code(inst_code)
 
 	message "Retrieving install code ..."
 
+	time = 3
 	# get the settings remotely and update it on client
 	(1..3).each do
 		begin
 			@system_configuration = open(url, "User-Agent" => "ruby/#{RUBY_VERSION}").read
 		rescue
+			sleep time
+			time += 1
 			@system_configuration = nil
 		end
 		break if @system_configuration != nil
 	end
 
 	if @system_configuration == nil
-		g = open("http://www.yahoo.com/").read
-		if g != nil
-			message "ERROR: the amahi.org server may not be available. Try again later."
-			exit(-1)
-		end
-		do_system_silent "systemctl restart #{NETWORK_SERVERNAME}.service"
-
 		sleep 2
 		(1..3).each do
 			begin
-				@system_configuration = open(url).read
+				@system_configuration = open(url, "User-Agent" => "ruby/#{RUBY_VERSION}").read
 			rescue
+				time += 2
 				@system_configuration = nil
 			end
 			last if @system_configuration != nil

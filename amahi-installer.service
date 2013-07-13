@@ -1,7 +1,7 @@
 [Unit]
 Description=Amahi HDA installer service
-Wants=network.target
-After=syslog.target network.target
+Requires=network.target NetworkManager.service
+After=syslog.target network.target NetworkManager.service
 
 [Service]
 Type=oneshot
