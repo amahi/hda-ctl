@@ -87,7 +87,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "4.2.30";
+my $version = "4.2.32";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -726,19 +726,13 @@ sub print_debian_network {
 	}
 }
 
-sub generate_network_settings {
-
-	# FIXME - we need this when using NetworkManager, via the API
-	# FIXME - we need this when using NetworkManager, via the API
-	# FIXME - we need this when using NetworkManager, via the API
-	return;
-
-	# FIXME - never executed
-	if ($platform eq "fedora") {
-		&print_fedora_network();
-	} else {
-		&print_debian_network();
-	}
+sub change_network_manager_settings {
+	my $self = $settings{'self-address'};
+	my $net = $settings{'net'};
+	my $gw = "$new.$settings{'gateway'}";
+	my $ip = "$net.$self";
+	my ($dns1, $dns2) = &resolve_dns_ips();
+	system("hda-change-network $ip $gw $dns1 $dns2");
 }
 
 sub print_dhcpd_conf {
@@ -1019,7 +1013,7 @@ sub generate_files {
 	&print_dnsmasq_common_conf() if ($dnsmasq_in_use);
 	&generate_dhcp_settings();
 	&generate_dns_settings();
-	&generate_network_settings ();
+	&change_network_manager_settings ();
 	&print_resolver ();
 }
 

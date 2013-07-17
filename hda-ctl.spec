@@ -1,7 +1,7 @@
 %global rubyrelease 2.0.0
 
 Name:           hda-ctl
-Version: 4.2.30
+Version: 4.2.32
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
@@ -53,7 +53,7 @@ rm -rf %{buildroot}
 %{__install} -m 755 -p hda-ctl hda-install %{buildroot}%{_bindir}
 %{__install} -m 755 -p hda-settings hda-alias hda-install-file %{buildroot}%{_bindir}
 %{__install} -m 755 -p hda-register-apps hda-install-gem %{buildroot}%{_bindir}
-%{__install} -m 755 -p hda-change-gw hda-change-dns amahi-installer hda-php-zone-change hda-fix-sudoers %{buildroot}%{_bindir}
+%{__install} -m 755 -p hda-change-gw hda-change-dns amahi-installer hda-php-zone-change hda-fix-sudoers hda-change-network %{buildroot}%{_bindir}
 # FIXME - remove after a while. added on Mon Feb 28 01:16:51 PST 2011
 %{__install} -m 4755 -p hda-ctl-hup %{buildroot}%{_bindir}
 %{__install} -m 0440 -p hda-privs %{buildroot}%{_sysconfdir}/sudoers.d/amahi
@@ -118,6 +118,7 @@ fi
 %{_bindir}/hda-alias
 %{_bindir}/hda-change-dns
 %{_bindir}/hda-change-gw
+%{_bindir}/hda-change-network
 %{_bindir}/hda-ctl
 %{_bindir}/hda-fix-sudoers
 %{_bindir}/hda-install
