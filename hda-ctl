@@ -87,7 +87,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "4.2.32";
+my $version = "4.2.33";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -729,7 +729,7 @@ sub print_debian_network {
 sub change_network_manager_settings {
 	my $self = $settings{'self-address'};
 	my $net = $settings{'net'};
-	my $gw = "$new.$settings{'gateway'}";
+	my $gw = "$net.$settings{'gateway'}";
 	my $ip = "$net.$self";
 	my ($dns1, $dns2) = &resolve_dns_ips();
 	system("hda-change-network $ip $gw $dns1 $dns2");
