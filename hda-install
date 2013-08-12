@@ -540,7 +540,7 @@ def check_install_code(inst_code)
 				time += 2
 				@system_configuration = nil
 			end
-			last if @system_configuration != nil
+			break if @system_configuration != nil
 		end
 		if @system_configuration == nil
 			message "ERROR: the installer cannot access the network to retrieve your HDAs settings."
