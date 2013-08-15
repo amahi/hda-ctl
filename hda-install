@@ -1058,31 +1058,23 @@ def disable_selinux
 end
 
 def do_php_timezone
-	message "FIXME: Setting up global PHP timezone ..."
-	return
-	# FIXME: ugly hack!! very fragile, untested for all timezones! (only Los Angeles is known to work)
-	# we reported it broken in f14 see https://fedorahosted.org/augeas/ticket/149
-	system("line=`grep ^ZONE /etc/sysconfig/clock | sed -e 's/ZONE/date.timezone/; s/ /_/g'` && sed -e \"s|;date.timezone .*$|$line|\" -i /etc/php.ini")
-	return
-
-	require 'augeas'
-
 	message "Setting up global PHP timezone ..."
+
+	unless File.symlink?("/etc/localtime")
+		puts "Global PHP timezone setup failed!"
+		return
+	end
+
+	# supported php timezones http://us1.php.net/manual/en/timezones.php
+	require 'augeas'
 	Augeas::open do |aug|
-		zone = aug.get("/files/etc/sysconfig/clock/ZONE")
-		#puts "ZONE = #{zone}"
-		# FIXME - we should also record it in the user settings! wether we get it or not from the clock file
-		# graceful degradation
-		unless zone
-			message "WARNING: could not patch the PHP timezone!\n"
-			return
-		end
-		zone.gsub! ' ', '_'
-		#puts "date.timezone = #{zone}"
+		zone = File.realpath("/etc/localtime")
+		zone.sub! /.*zoneinfo\//, ''
+		puts "date.timezone = #{zone}"
 		aug.set("/files/etc/php.ini/Date/date.timezone", zone)
 		# the save is broken in f14 see https://fedorahosted.org/augeas/ticket/149
 		unless aug.save
-			raise IOError, "Failed to save changes to /etc/php.ini!"
+			puts "Failed to save changes to /etc/php.ini!"
 		end
 	end
 end
