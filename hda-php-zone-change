@@ -1,15 +1,22 @@
 #!/usr/bin/ruby
 
 def do_php_timezone
-	require 'augeas'
 
-	zone = ""
+	unless File.symlink?("/etc/localtime")
+		puts "Global PHP timezone setup failed!"
+		return
+	end
+
+	# supported php timezones http://us1.php.net/manual/en/timezones.php
+	require 'augeas'
 	Augeas::open do |aug|
-		zone = aug.get("/files/etc/sysconfig/clock/ZONE")
-		zone.gsub! ' ', '_'
+		zone = File.realpath("/etc/localtime")
+		zone.sub! /.*zoneinfo\//, ''
+		puts "date.timezone = #{zone}"
 		aug.set("/files/etc/php.ini/Date/date.timezone", zone)
+		# the save is broken in f14 see https://fedorahosted.org/augeas/ticket/149
 		unless aug.save
-			raise IOError, "Failed to save changes to /etc/php.ini!"
+			puts "Failed to save changes to /etc/php.ini!"
 		end
 	end
 	puts "PHP Zone changed to:"
