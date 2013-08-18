@@ -12,15 +12,14 @@ def do_php_timezone
 	Augeas::open do |aug|
 		zone = File.realpath("/etc/localtime")
 		zone.sub! /.*zoneinfo\//, ''
-		puts "date.timezone = #{zone}"
 		aug.set("/files/etc/php.ini/Date/date.timezone", zone)
 		# the save is broken in f14 see https://fedorahosted.org/augeas/ticket/149
-		unless aug.save
-			puts "Failed to save changes to /etc/php.ini!"
+		if aug.save
+			puts "PHP timezone successfully changed to: #{zone}"
+		else
+			puts "Failed to save PHP Timezone changes to /etc/php.ini!"
 		end
 	end
-	puts "PHP Zone changed to:"
-	puts "date.timezone = #{zone}"
 end
 
 do_php_timezone
