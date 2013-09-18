@@ -1,9 +1,12 @@
+hda-ctl (5.1.3) precise; urgency=low
+
+  * new import
+
+ -- Frans Meulenbroeks <fransmeulenbroeks@gmail.com>  Wed, 18 Sep 2013 20:45:00 +0100
+
 hda-ctl (4.2.3) precise; urgency=low
 
   * rename to hda-ctl
-
-hda-ctl (4.2.3) precise; urgency=low
-
   * use the NetworkManager API to configure the network as static
 
  -- Carlos Puchol <cpg+git@amahi.org>  Wed, 12 Dec 2012 04:48:15 -0800

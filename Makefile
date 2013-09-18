@@ -36,5 +36,8 @@ deb: update-header dist
 	#(cd release/hda-ctl-$(VERSION)/debian && debuild -uc -us && debuild -S -uc -us)
 	(cd release/hda-ctl-$(VERSION)/debian && debuild -uc -us)
 
+clean:
+	(cd release/hda-ctl-$(VERSION)/ && dh_clean)
+
 install: rpm
 	(cd release && sudo rpm -Uvh hda-ctl-$(VERSION)-*.rpm)
