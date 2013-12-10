@@ -12,7 +12,7 @@ Well-tested contributions are always welcome! Here's what you need to do to get 
 #### 1. Clone the repo
 
 ```bash
-git clone https://github.com/amahi/daemon.git
+git clone https://github.com/amahi/hda-ctl.git
 ```
 
 #### Agree to CLA
