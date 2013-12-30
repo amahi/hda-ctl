@@ -40,6 +40,11 @@ DATABASE_MAIN_USER = "root"
 DATABASE_MAIN_PASSWORD = "hda"
 GREYHOLE_DATABASE = "greyhole"
 
+# upstart conf file for an ubuntu system
+UPSTART_CONF = "/etc/init/%s.conf"
+# legacy fallback (needs trailing slash)
+LEGACY_INIT_PATH = "/etc/init.d/"
+
 OLDOUT = $stdout.dup
 
 @opt = ARGV.getopts("VfsdrDhnwmoyqi:p")
@@ -48,7 +53,10 @@ def set_platform
     issue = File.open("/etc/issue", "r");
     line = issue.gets;
     $platform = "unknown";
-    if ((line.include? "Ubuntu") or (line.include? "Debian"))
+    if (line.include? "Ubuntu")
+        $platform = "ubuntu";
+    end
+    if (line.include? "Debian")
         $platform = "debian";
     end
     if (line.include? "Fedora")
@@ -451,7 +459,14 @@ def start_all_services
 end
 
 def start_service(service)
-	do_system "systemctl start #{service}.service"
+	if fedora?
+		do_system "/usr/bin/systemctl start #{service}.service"
+	elsif ubuntu? and File.exist?(UPSTART_CONF % service)
+		do_system "/sbin/initctl start #{service}"
+	else
+		# legacy fallback
+		 do_system LEGACY_INIT_PATH + service + " start"
+	end
 end
 
 def get_os_version
