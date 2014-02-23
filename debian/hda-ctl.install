@@ -1,5 +1,4 @@
 #Installing init.d scripts this way due to running chkconfig in post inst
-
 hda-ctl		        /usr/bin
 hda-install		/usr/bin
 hda-settings            /usr/bin
@@ -12,6 +11,8 @@ amahi-installer		/usr/bin
 hda-php-zone-change	/usr/bin
 hda-install-gem         /usr/bin
 hda-ctl-hup		/usr/bin
+hda-change-network      /usr/bin
+hda-fix-sudoers         /usr/bin
 # hdactrl.initscript.debian is being handled by dh_installinit dh $@ Calls dh_installinit
 hda-ctl.sysconfig 	/etc/sysconfig
 amahi-hda               /usr/share/hda-ctl

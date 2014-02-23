@@ -8,7 +8,7 @@ Homepage: http://www.amahi.org/
 
 Package: hda-ctl
 Architecture: any 
-Depends: bind9,bind9utils,dhcp3-server,samba,apache2,network-manager,monit,libauthen-pam-perl,ruby,ruby-dbus,libdbd-mysql-ruby,ruby-dev,eruby,libaugeas-ruby,libdb-ruby1.8,ri1.8,php5-mysql,php5,libapache2-mod-php5,cadaver,liburi-perl,libwww-perl,rubygems,${misc:Depends},${shlibs:Depends}
+Depends: dnsmasq,dhcp3-server,samba,apache2,network-manager,monit,libauthen-pam-perl,ruby,ruby-dbus,libdbd-mysql-ruby,ruby-dev,eruby,libaugeas-ruby,libdb-ruby1.8,ri1.8,php5-mysql,php5,libapache2-mod-php5,cadaver,liburi-perl,ruby-passenger,libapache2-mod-passenger,libwww-perl,rubygems,${misc:Depends},${shlibs:Depends}
 Description: Amahi Home Digital Assistant daemon
  The Amahi Home Server is more than what you'd expect from a GNU/Linux
  home server. We call it "Home Digital Assistant" or HDA.  The Amahi
