@@ -1172,8 +1172,15 @@ sub restart_named {
 }
 
 sub restart_dnsmasq {
+	my $cmd = "";
 	if (&should_run_at_boot("dnsmasq")) {
-		if (system("systemctl restart dnsmasq.service >& /dev/null")) {
+		if ($platform eq "fedora") {
+			$cmd = "systemctl restart dnsmasq.service >& /dev/null";
+		} else {
+			$cmd = "service dnsmasq restart >& /dev/null";
+		}
+
+		if (system($cmd)) {
 			&log ("cannot restart dnsmasq");
 		} else {
 			&log ("dnsmasq restarted successfully");
