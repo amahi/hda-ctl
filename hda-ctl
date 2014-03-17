@@ -1177,7 +1177,7 @@ sub restart_dnsmasq {
 		if ($platform eq "fedora") {
 			$cmd = "systemctl restart dnsmasq.service >& /dev/null";
 		} else {
-			$cmd = "service dnsmasq restart >& /dev/null";
+			$cmd = "service dnsmasq restart >/dev/null 2>&1";
 		}
 
 		if (system($cmd)) {
