@@ -245,6 +245,7 @@ sub get_db_settings {
 	$settings{'net_start'} = $settings{'net_start'} || $default_net_start;
 	$settings{'dyn_lo'} = $settings{'dyn_lo'} || $default_dyn_lo;
 	$settings{'dyn_hi'} = $settings{'dyn_hi'} || $default_dyn_hi;
+	$settings{'dhcp_lease_time'} = $settings{'lease_time'} || $settings{'dhcp_lease_time'} || $default_dhcp_lease;
 }
 
 sub db_connect {
