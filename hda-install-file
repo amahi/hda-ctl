@@ -120,7 +120,7 @@ sub substitute {
 		or die "cannot open '$file_out' for writing";
 
 	my $netmask = $settings{'netmask'};
-	my $self = $settings{'self-address'};
+	my $hda_ip = $settings{'self-address'};
 	my $domain = $settings{'domain'};
 	my $net = $settings{'net'};
 	my $api_key = $settings{'api-key'};
@@ -136,12 +136,14 @@ sub substitute {
 	# substitute keywords
 	while (<$fin>) {
 		s/\@HDA_NETWORK\@/$net/g;
-		s/\@HDA_SELF\@/$self/g;
+		s/\@HDA_IP\@/$hda_ip/g;
 		s/\@HDA_DOMAIN\@/$domain/g;
 		s/\@HDA_NETMASK\@/$netmask/g;
 		s/\@HDA_API_KEY\@/$api_key/g;
 		s/\@HDA_ARCH\@/$arch/g;
 		s/\@HDA_ARCH_64\@/$arch_64/g;
+		# HDA_SELF is deprecated
+		s/\@HDA_SELF\@/$hda_ip/g;
 		print $fout $_;
 	}
 	close $fin;
