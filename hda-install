@@ -22,12 +22,12 @@ require 'optparse'
 require 'uri'
 require 'open-uri'
 require 'net/http'
-require 'mysql'
+require 'mysql2'
 require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "5.4.2"
+$version = "5.5.0"
 
 # FIXME only eth0 supported for now - more hopefully in the future
 @network_device = "eth0"
@@ -163,10 +163,8 @@ def autoconfigure_network
 	net, gw, device = autodetect_network
 	if net and gw
 		if @database
-			sth = @database.prepare("UPDATE #{DATABASE_NAME}.settings SET value = ? WHERE settings.name = 'net' LIMIT 1 ;")
-			sth.execute(net)
-			sth = @database.prepare("UPDATE #{DATABASE_NAME}.settings SET value = ? WHERE settings.name = 'gateway' LIMIT 1 ;")
-			sth.execute(gw)
+			sth = @database.query("UPDATE #{DATABASE_NAME}.settings SET value = '#{net}' WHERE settings.name = 'net' LIMIT 1 ;")
+			sth = @database.query("UPDATE #{DATABASE_NAME}.settings SET value = '#{gw}' WHERE settings.name = 'gateway' LIMIT 1 ;")
 		end
 		# set the device here from the existing setup!
 		@network_device = device
@@ -180,7 +178,7 @@ end
 
 # global database handle for both functions below
 # FIXME - install the mysql gem first, then require it??
-@database = Mysql::init()
+@database = nil
 
 @settings = {}
 
@@ -206,8 +204,8 @@ def db_connect
 	# connect to the database
 	begin
 		# args: hostname, username, password, database
-		@database.real_connect("localhost", DATABASE_USER, DATABASE_PASSWORD, DATABASE_NAME)
-	rescue Mysql::Error => e
+		@database = Mysql2::Client.new(host: "localhost", username: DATABASE_USER, password: DATABASE_PASSWORD, database: DATABASE_NAME)
+	rescue Mysql2::Error => e
 		puts "Error code: #{e.errno}"
 		puts "Error message: #{e.error}"
 		puts "Error SQLSTATE: #{e.sqlstate}" if e.respond_to?("sqlstate")
@@ -217,15 +215,12 @@ def db_connect
 end
 
 def get_db_settings
-	sth = @database.query("SELECT Name, Value FROM settings")
-
-	sth.each do |row|
-		name = row[0]
-		value = row[1]
+	@database.query("SELECT name, value FROM settings").each do |row|
+		name = row['name']
+		value = row['value']
 		@settings[name] = value
-		puts "name = #{name}, value = #{value}" if @opt["D"]
+		puts "SETTINGS: name = #{name}, value = #{value}" if @opt["D"]
 	end
-	sth.free
 end
 
 def clone_perm(i, o)
