@@ -1,7 +1,7 @@
 %global rubyrelease 2.1.5
 
 Name:           hda-ctl
-Version: 5.5.0
+Version: 5.5.1
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
@@ -15,7 +15,7 @@ Requires: hda-platform >= 6.0.0
 Requires: bash >= 4.2.48-2
 Requires: dnsmasq, sudo >= 1.7.2
 Requires: mariadb-server samba httpd
-Requires: ruby(release) = %{rubyrelease}
+Requires: ruby(release) >= %{rubyrelease}
 Requires: monit perl-Authen-PAM fpaste
 Requires: rubygem-mysql2 ruby-libs ruby-augeas rubygem(bundler) rubygem(ruby-dbus)
 Requires: perl-Authen-PAM perl-libwww-perl perl-LWP-Protocol-https wget curl
