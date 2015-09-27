@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "5.5.1"
+$version = "5.6.0"
 
 # FIXME only eth0 supported for now - more hopefully in the future
 @network_device = "eth0"
@@ -99,7 +99,7 @@ if fedora? or centos?
 	DHCPD_SERVERNAME = 'dhcpd'
 	HTTPD_SERVERNAME = 'httpd'
 	HTTPD_ENVFILE = '/etc/sysconfig/httpd'
-	MYSQL_SERVERNAME = 'mysqld'
+	MYSQL_SERVERNAME = 'mariadb'
 	NAMED_SERVERNAME = 'named'
 	NETWORK_SERVERNAME = 'network'
 	NETWORKMANAGER_SERVERNAME = 'NetworkManager'
@@ -701,12 +701,12 @@ def do_install_rpms
 	do_system_silent "killall yum-updatesd"
 	message "Installing #{to_install.size} packages ..."
 	do_system_silent "killall yum"
-	ret = do_system_multiple("yum -y install #{set}")
-	puts "WARNING: rpm install failed ... please run\n\t   yum -y install #{set}\n\tby hand until it installs correctly" unless ret
+	ret = do_system_multiple("dnf -y install #{set}")
+	puts "WARNING: rpm install failed ... please run\n\t   dnf -y install #{set}\n\tby hand until it installs correctly" unless ret
 	# FIXME - needed for F12 updates of sudo
 	set = "sudo"
-	ret = do_system_multiple("yum -y update #{set}")
-	puts "WARNING: rpm install failed ... please run\n\t   yum -y install #{set}\n\tby hand until it installs correctly" unless ret
+	ret = do_system_multiple("dnf -y update #{set}")
+	puts "WARNING: rpm install failed ... please run\n\t   dnf -y install #{set}\n\tby hand until it installs correctly" unless ret
 
 	message "RPM packages installed"
 end
@@ -774,7 +774,7 @@ def do_full_install(hda)
 
 	if fedora? or centos?
 		message "Stopping background software updates ..."
-		# stop background yum to prevent waits - silently because they may not be there
+		# stop background dnf to prevent waits - silently because they may not be there
 		do_system_silent "systemctl stop yum-updatesd.service"
 		sleep 1
 		do_system_silent "killall yum-updatesd"

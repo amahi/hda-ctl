@@ -1,7 +1,7 @@
-%global rubyrelease 2.1.5
+%global rubyrelease 2.2.3
 
 Name:           hda-ctl
-Version: 5.5.1
+Version: 5.6.0
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
@@ -25,6 +25,8 @@ Requires:         systemd
 Requires(post):   systemd
 Requires(preun):  systemd
 Requires(postun): systemd
+
+BuildRequires: make gcc
 
 %define debug_package %{nil}
 
