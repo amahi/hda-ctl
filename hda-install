@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "6.1.0"
+$version = "6.1.1"
 
 # default network device
 @network_device = "eth0"
@@ -50,7 +50,15 @@ OLDOUT = $stdout.dup
 @opt = ARGV.getopts("VfsdrDhnwmoyqi:p")
 
 def set_platform
-    issue = File.open("/etc/issue", "r");
+    issue = nil
+    if File.exists?('/etc/system-release')
+	file = nil
+	issue = File.open("/etc/system-release", "r")
+    elsif File.exists?('/etc/issue')
+	issue = File.open("/etc/issue", "r")
+    else
+	raise "Ohhh. System not known. Sowwy."
+    end
     line = issue.gets;
     $platform = "unknown";
     if (line.include? "Ubuntu")
