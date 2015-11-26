@@ -1,7 +1,7 @@
 %global rubyrelease 2.2.3
 
 Name:           hda-ctl
-Version: 6.1.1
+Version: 6.1.2
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.

@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "6.1.1"
+$version = "6.1.2"
 
 # default network device
 @network_device = "eth0"
@@ -416,7 +416,10 @@ def do_httpd
 	unless in_file?(HTTPD_ENVFILE, 'umask')
 		File.open(HTTPD_ENVFILE, "a+") { |file| file.puts "\numask 002\n" }
 	end
+	# add apache to users group to make httpd capable of writing user files, e.g. for downloading apps
 	system "usermod -g users -G apache apache 2>&1"
+	# remove interfering configs
+	do_system_silent "cd /etc/httpd/conf.d/; rm -f welcome.conf autoindex.conf userdir.conf"
 	puts "HTTPD install done."
 end
 
