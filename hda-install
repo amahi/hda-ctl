@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "6.1.2"
+$version = "6.1.4"
 
 # default network device
 @network_device = "eth0"
@@ -432,7 +432,7 @@ def start_all_services
 
 	if fedora? or centos?
 		services_stop = [ 'gpm', 'hplip', 'isdn', 'kudzu', 'sendmail',
-			'yum-updatesd', 'dhcrelay', 'ldap', 'firewalld']
+			'yum-updatesd', 'dhcrelay', 'ldap', 'rolekit', 'firewalld']
 	else
 		services_stop = []
 	end
