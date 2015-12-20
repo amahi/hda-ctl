@@ -975,12 +975,22 @@ def setup_network_manager(ip, gw, dns1, dns2)
 	nm_service = system_bus.service("org.freedesktop.NetworkManager")
 	settings = nm_service.object("/org/freedesktop/NetworkManager/Settings")
 	settings.introspect
+	#DEBUG: puts settings.inspect
 	settings_iface = settings["org.freedesktop.NetworkManager.Settings"]
 	connections = settings_iface.ListConnections.first
 	ethernet = select_connection(nm_service, connections)
 	if ethernet
 		s = ethernet["org.freedesktop.NetworkManager.Settings.Connection"].GetSettings
+		#DEBUG: puts s.inspect
 		new_settings = s[0].merge(con)
+		# FIXME we're not sure why this needs to be done now to avoid dbus exceptions
+		new_settings["connection"].delete 'permissions'
+		new_settings["connection"].delete 'secondaries'
+		new_settings["connection"].delete 'mac-address'
+		new_settings.delete "802-3-ethernet"
+		new_settings.delete "ipv6"
+		#DEBUG: puts new_settings.inspect
+		#DEBUG: puts new_settings["connection"].inspect
 		ethernet["org.freedesktop.NetworkManager.Settings.Connection"].Update(new_settings)
 	else
 		# if we have not found an ethernet connection configured, create one
@@ -1011,15 +1021,11 @@ def select_connection(network_manager, connections)
 	nil
 end
 
-
 def do_network
-	message "Configuring your network (#{@network_device})."
-
 	netmask = @settings['netmask']
 	self_address = @settings['self-address']
 	domain = @settings['domain']
 	net = @settings['net']
-	id = @settings['hda-id']
 	gw = @settings['gateway']
 	dns = @settings['dns']
 	if dns && dns == 'opendns'
@@ -1038,17 +1044,21 @@ def do_network
 	gwy = "#{net}.#{gw}"
 	begin
 		setup_network_manager(ip, gwy, dns1, dns2)
-	rescue
-		puts "WARNING: cannot setup network manager!"
+	rescue => e
+		puts "WARNING: cannot setup network manager! Exception: #{e}"
 		puts "WARNING: setup your HDA with a static IP!"
 	end
 
+	write_resolver(domain, ip)
+end
+
+def write_resolver(domain, ip)
 	rslv = "/etc/resolv.conf"
 	rslv_fh = nil
 	begin
 		rslv_fh = File.new rslv, "w"
 		rslv_fh.puts "search #{domain}"
-		rslv_fh.puts "nameserver #{net}.#{self_address}"
+		rslv_fh.puts "nameserver #{ip}"
 	rescue
 		abort "cannot open '#{rslv}' for writing: #{$!}"
 	ensure
