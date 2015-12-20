@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "6.1.4"
+$version = "6.1.8"
 
 # default network device
 @network_device = "eth0"
@@ -959,14 +959,15 @@ def rand_uuid
 	[8,4,4,4,12].map {|n| rand_hex(n)}.join('-')
 end
 
-def setup_network_manager(ip, gw, dns1, dns2)
+def setup_network_manager(ip, gw, dns1, dns2, domain)
 
 	puts "starting network install with IP: #{ip} and GW: #{gw}"
 
 	s_ip4 = {
-	  "addresses"=> ["aau", [[ip2int(ip), 24, ip2int(gw)]]],
-	  "method"=>["s", "manual"],
-	  "dns"=> ["au", [ip2int(dns1), ip2int(dns2)]]
+	  "addresses" => ["aau", [[ip2int(ip), 24, ip2int(gw)]]],
+	  "method" => ["s", "manual"],
+	  "dns" => ["au", [ip2int(ip), ip2int(ip)]],
+	  "dns-search" => ["as", [domain]],
 	}
 
 	con = { "ipv4" => s_ip4 }
@@ -1021,6 +1022,23 @@ def select_connection(network_manager, connections)
 	nil
 end
 
+# new call to try via nmcli 
+def setup_network_manager_nmcli(ip, gw, dns1, dns2, domain)
+	# active ethernet devices list
+	dl = %x(nmcli con show --active).split("\n").map{|l| l =~ /802-3-ethernet/ ? l : nil }.compact
+	return if dl.empty?
+	# get the device id of the first ethernet device
+	device = dl.first.split(/ +/).last
+	values = ["ipv4.method manual"]
+	values << "ipv4.dns-search #{domain}"
+	# FIXME-cpg: this forces the network to be /24
+	values << "ipv4.addresses #{ip}/24"
+	values << "ipv4.dns #{ip}"
+	vl = values.join(" ")
+	puts "Setting network parameters with NMCLI with command: nmcli con #{device} #{vl}"
+	do_system("nmcli con modify #{device} #{vl}")
+end
+
 def do_network
 	netmask = @settings['netmask']
 	self_address = @settings['self-address']
@@ -1043,10 +1061,16 @@ def do_network
 	ip = "#{net}.#{self_address}"
 	gwy = "#{net}.#{gw}"
 	begin
-		setup_network_manager(ip, gwy, dns1, dns2)
+		setup_network_manager(ip, gwy, dns1, dns2, domain)
 	rescue => e
-		puts "WARNING: cannot setup network manager! Exception: #{e}"
-		puts "WARNING: setup your HDA with a static IP!"
+		begin
+			puts "WARNING: cannot setup network manager via API! Exception: #{e}"
+			puts "WARNING: trying via NMCLI as a secondary alternative!"
+			setup_network_manager_nmcli(ip, gwy, dns1, dns2, domain)
+		rescue => e2
+			puts "WARNING: cannot setup network manager via NMCLI! Exception: #{e2}"
+			puts "ERROR: setup your HDA with a static IP by hand!"
+		end
 	end
 
 	write_resolver(domain, ip)

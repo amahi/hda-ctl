@@ -1,4 +1,4 @@
-VERSION=6.1.4
+VERSION=6.1.8
 
 RPMBUILDDIR=$(HOME)/rpmbuild
 
