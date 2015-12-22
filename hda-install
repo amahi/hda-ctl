@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "6.0.0"
+$version = "6.0.1"
 
 # FIXME only eth0 supported for now - more hopefully in the future
 @network_device = "eth0"
@@ -955,7 +955,7 @@ def setup_network_manager(ip, gw, dns1, dns2)
 	s_ip4 = {
 	  "addresses"=> ["aau", [[ip2int(ip), 24, ip2int(gw)]]],
 	  "method"=>["s", "manual"],
-	  "dns"=> ["au", [ip2int(dns1), ip2int(dns2)]]
+	  "dns"=> ["au", [ip2int(ip), ip2int(ip)]]
 	}
 
 	con = { "ipv4" => s_ip4 }

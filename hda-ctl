@@ -87,7 +87,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "6.0.0";
+my $version = "6.0.1";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
