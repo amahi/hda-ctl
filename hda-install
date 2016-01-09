@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "6.1.8"
+$version = "6.1.9"
 
 # default network device
 @network_device = "eth0"
@@ -696,6 +696,7 @@ def do_install_rpms
 	rpms << "samba httpd cadaver patch sudo wol bc"
 	rpms << "fpaste perl-DBI rsync wget curl cronie pmount"
 	rpms << "v8"
+	rpms << "php-gd php-mbstring php-xml php-mcrypt"
 
 	list = rpms.join(' ').split(' ')
 	to_install = list.delete_if { |pname| installed.select{|p| p =~ /^#{pname}-[0-9]/} != [] }
