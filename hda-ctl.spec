@@ -82,12 +82,6 @@ rm -rf %{buildroot}
 # base initialitation
 %{__cp} -a httpd %{buildroot}/usr/share/hda-ctl/
 
-# calendar server non-destructive initialitation
-%{__mkdir} -p %{buildroot}/var/hda/calendar
-%{__mkdir} -p %{buildroot}/var/hda/calendar/logs
-%{__mkdir} -p %{buildroot}/var/hda/calendar/html
-%{__mkdir} -p %{buildroot}/var/hda/calendar/locks
-
 # file server non-destructive initialization for later
 %{__cp} -a samba %{buildroot}/usr/share/hda-ctl/
 %{__mkdir} -p %{buildroot}/var/hda/files/Backups
@@ -140,7 +134,6 @@ fi
 %ghost %attr(0775, apache, users) /var/hda/files
 %attr(4755, root, root) %{_bindir}/hda-ctl-hup
 /usr/share/hda-ctl/*
-%attr(755, apache, apache) /var/hda/calendar
 %attr(0644,root,root) %{_unitdir}/hda-ctl.service
 %attr(0644,root,root) %{_unitdir}/amahi-installer.service
 %config(noreplace) %{_sysconfdir}/logrotate.d/hda-ctl
