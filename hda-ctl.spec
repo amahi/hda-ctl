@@ -1,7 +1,7 @@
-%global rubyrelease 2.1.5
+%global rubyrelease 2.2.3
 
 Name:           hda-ctl
-Version: 6.0.1
+Version: 7.0.0
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
@@ -20,11 +20,14 @@ Requires: monit perl-Authen-PAM fpaste
 Requires: rubygem-mysql2 ruby-libs ruby-augeas rubygem(bundler) rubygem(ruby-dbus)
 Requires: perl-Authen-PAM perl-libwww-perl perl-LWP-Protocol-https wget curl
 Requires: cadaver php php-mysqlnd perl-URI filesystem rsync cronie pmount bc
+Requires: php-gd php-mbstring php-xml php-mcrypt
 Requires: bind-utils
 Requires:         systemd
 Requires(post):   systemd
 Requires(preun):  systemd
 Requires(postun): systemd
+
+BuildRequires: make gcc
 
 %define debug_package %{nil}
 
@@ -79,12 +82,6 @@ rm -rf %{buildroot}
 # base initialitation
 %{__cp} -a httpd %{buildroot}/usr/share/hda-ctl/
 
-# calendar server non-destructive initialitation
-%{__mkdir} -p %{buildroot}/var/hda/calendar
-%{__mkdir} -p %{buildroot}/var/hda/calendar/logs
-%{__mkdir} -p %{buildroot}/var/hda/calendar/html
-%{__mkdir} -p %{buildroot}/var/hda/calendar/locks
-
 # file server non-destructive initialization for later
 %{__cp} -a samba %{buildroot}/usr/share/hda-ctl/
 %{__mkdir} -p %{buildroot}/var/hda/files/Backups
@@ -137,7 +134,6 @@ fi
 %ghost %attr(0775, apache, users) /var/hda/files
 %attr(4755, root, root) %{_bindir}/hda-ctl-hup
 /usr/share/hda-ctl/*
-%attr(755, apache, apache) /var/hda/calendar
 %attr(0644,root,root) %{_unitdir}/hda-ctl.service
 %attr(0644,root,root) %{_unitdir}/amahi-installer.service
 %config(noreplace) %{_sysconfdir}/logrotate.d/hda-ctl

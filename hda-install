@@ -27,9 +27,9 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "6.0.1"
+$version = "7.0.0"
 
-# FIXME only eth0 supported for now - more hopefully in the future
+# default network device
 @network_device = "eth0"
 
 # FIXME - make this more flexible - or read it out
@@ -50,7 +50,15 @@ OLDOUT = $stdout.dup
 @opt = ARGV.getopts("VfsdrDhnwmoyqi:p")
 
 def set_platform
-    issue = File.open("/etc/issue", "r");
+    issue = nil
+    if File.exists?('/etc/system-release')
+	file = nil
+	issue = File.open("/etc/system-release", "r")
+    elsif File.exists?('/etc/issue')
+	issue = File.open("/etc/issue", "r")
+    else
+	raise "Ohhh. System not known. Sowwy."
+    end
     line = issue.gets;
     $platform = "unknown";
     if (line.include? "Ubuntu")
@@ -99,7 +107,7 @@ if fedora? or centos?
 	DHCPD_SERVERNAME = 'dhcpd'
 	HTTPD_SERVERNAME = 'httpd'
 	HTTPD_ENVFILE = '/etc/sysconfig/httpd'
-	MYSQL_SERVERNAME = 'mysqld'
+	MYSQL_SERVERNAME = 'mariadb'
 	NAMED_SERVERNAME = 'named'
 	NETWORK_SERVERNAME = 'network'
 	NETWORKMANAGER_SERVERNAME = 'NetworkManager'
@@ -408,7 +416,10 @@ def do_httpd
 	unless in_file?(HTTPD_ENVFILE, 'umask')
 		File.open(HTTPD_ENVFILE, "a+") { |file| file.puts "\numask 002\n" }
 	end
+	# add apache to users group to make httpd capable of writing user files, e.g. for downloading apps
 	system "usermod -g users -G apache apache 2>&1"
+	# remove interfering configs
+	do_system_silent "cd /etc/httpd/conf.d/; rm -f welcome.conf autoindex.conf userdir.conf"
 	puts "HTTPD install done."
 end
 
@@ -421,7 +432,7 @@ def start_all_services
 
 	if fedora? or centos?
 		services_stop = [ 'gpm', 'hplip', 'isdn', 'kudzu', 'sendmail',
-			'yum-updatesd', 'dhcrelay', 'ldap', 'firewalld']
+			'yum-updatesd', 'dhcrelay', 'ldap', 'rolekit', 'firewalld']
 	else
 		services_stop = []
 	end
@@ -685,6 +696,7 @@ def do_install_rpms
 	rpms << "samba httpd cadaver patch sudo wol bc"
 	rpms << "fpaste perl-DBI rsync wget curl cronie pmount"
 	rpms << "v8"
+	rpms << "php-gd php-mbstring php-xml php-mcrypt"
 
 	list = rpms.join(' ').split(' ')
 	to_install = list.delete_if { |pname| installed.select{|p| p =~ /^#{pname}-[0-9]/} != [] }
@@ -701,12 +713,12 @@ def do_install_rpms
 	do_system_silent "killall yum-updatesd"
 	message "Installing #{to_install.size} packages ..."
 	do_system_silent "killall yum"
-	ret = do_system_multiple("yum -y install #{set}")
-	puts "WARNING: rpm install failed ... please run\n\t   yum -y install #{set}\n\tby hand until it installs correctly" unless ret
+	ret = do_system_multiple("dnf -y install #{set}")
+	puts "WARNING: rpm install failed ... please run\n\t   dnf -y install #{set}\n\tby hand until it installs correctly" unless ret
 	# FIXME - needed for F12 updates of sudo
 	set = "sudo"
-	ret = do_system_multiple("yum -y update #{set}")
-	puts "WARNING: rpm install failed ... please run\n\t   yum -y install #{set}\n\tby hand until it installs correctly" unless ret
+	ret = do_system_multiple("dnf -y update #{set}")
+	puts "WARNING: rpm install failed ... please run\n\t   dnf -y install #{set}\n\tby hand until it installs correctly" unless ret
 
 	message "RPM packages installed"
 end
@@ -774,7 +786,7 @@ def do_full_install(hda)
 
 	if fedora? or centos?
 		message "Stopping background software updates ..."
-		# stop background yum to prevent waits - silently because they may not be there
+		# stop background dnf to prevent waits - silently because they may not be there
 		do_system_silent "systemctl stop yum-updatesd.service"
 		sleep 1
 		do_system_silent "killall yum-updatesd"
@@ -948,14 +960,15 @@ def rand_uuid
 	[8,4,4,4,12].map {|n| rand_hex(n)}.join('-')
 end
 
-def setup_network_manager(ip, gw, dns1, dns2)
+def setup_network_manager(ip, gw, dns1, dns2, domain)
 
 	puts "starting network install with IP: #{ip} and GW: #{gw}"
 
 	s_ip4 = {
-	  "addresses"=> ["aau", [[ip2int(ip), 24, ip2int(gw)]]],
-	  "method"=>["s", "manual"],
-	  "dns"=> ["au", [ip2int(ip), ip2int(ip)]]
+	  "addresses" => ["aau", [[ip2int(ip), 24, ip2int(gw)]]],
+	  "method" => ["s", "manual"],
+	  "dns" => ["au", [ip2int(ip), ip2int(ip)]],
+	  "dns-search" => ["as", [domain]],
 	}
 
 	con = { "ipv4" => s_ip4 }
@@ -964,12 +977,22 @@ def setup_network_manager(ip, gw, dns1, dns2)
 	nm_service = system_bus.service("org.freedesktop.NetworkManager")
 	settings = nm_service.object("/org/freedesktop/NetworkManager/Settings")
 	settings.introspect
+	#DEBUG: puts settings.inspect
 	settings_iface = settings["org.freedesktop.NetworkManager.Settings"]
 	connections = settings_iface.ListConnections.first
 	ethernet = select_connection(nm_service, connections)
 	if ethernet
 		s = ethernet["org.freedesktop.NetworkManager.Settings.Connection"].GetSettings
+		#DEBUG: puts s.inspect
 		new_settings = s[0].merge(con)
+		# FIXME we're not sure why this needs to be done now to avoid dbus exceptions
+		new_settings["connection"].delete 'permissions'
+		new_settings["connection"].delete 'secondaries'
+		new_settings["connection"].delete 'mac-address'
+		new_settings.delete "802-3-ethernet"
+		new_settings.delete "ipv6"
+		#DEBUG: puts new_settings.inspect
+		#DEBUG: puts new_settings["connection"].inspect
 		ethernet["org.freedesktop.NetworkManager.Settings.Connection"].Update(new_settings)
 	else
 		# if we have not found an ethernet connection configured, create one
@@ -1000,15 +1023,28 @@ def select_connection(network_manager, connections)
 	nil
 end
 
+# new call to try via nmcli 
+def setup_network_manager_nmcli(ip, gw, dns1, dns2, domain)
+	# active ethernet devices list
+	dl = %x(nmcli con show --active).split("\n").map{|l| l =~ /802-3-ethernet/ ? l : nil }.compact
+	return if dl.empty?
+	# get the device id of the first ethernet device
+	device = dl.first.split(/ +/).last
+	values = ["ipv4.method manual"]
+	values << "ipv4.dns-search #{domain}"
+	# FIXME-cpg: this forces the network to be /24
+	values << "ipv4.addresses #{ip}/24"
+	values << "ipv4.dns #{ip}"
+	vl = values.join(" ")
+	puts "Setting network parameters with NMCLI with command: nmcli con #{device} #{vl}"
+	do_system("nmcli con modify #{device} #{vl}")
+end
 
 def do_network
-	message "Configuring your network (#{@network_device})."
-
 	netmask = @settings['netmask']
 	self_address = @settings['self-address']
 	domain = @settings['domain']
 	net = @settings['net']
-	id = @settings['hda-id']
 	gw = @settings['gateway']
 	dns = @settings['dns']
 	if dns && dns == 'opendns'
@@ -1026,18 +1062,28 @@ def do_network
 	ip = "#{net}.#{self_address}"
 	gwy = "#{net}.#{gw}"
 	begin
-		setup_network_manager(ip, gwy, dns1, dns2)
-	rescue
-		puts "WARNING: cannot setup network manager!"
-		puts "WARNING: setup your HDA with a static IP!"
+		setup_network_manager(ip, gwy, dns1, dns2, domain)
+	rescue => e
+		begin
+			puts "WARNING: cannot setup network manager via API! Exception: #{e}"
+			puts "WARNING: trying via NMCLI as a secondary alternative!"
+			setup_network_manager_nmcli(ip, gwy, dns1, dns2, domain)
+		rescue => e2
+			puts "WARNING: cannot setup network manager via NMCLI! Exception: #{e2}"
+			puts "ERROR: setup your HDA with a static IP by hand!"
+		end
 	end
 
+	write_resolver(domain, ip)
+end
+
+def write_resolver(domain, ip)
 	rslv = "/etc/resolv.conf"
 	rslv_fh = nil
 	begin
 		rslv_fh = File.new rslv, "w"
 		rslv_fh.puts "search #{domain}"
-		rslv_fh.puts "nameserver #{net}.#{self_address}"
+		rslv_fh.puts "nameserver #{ip}"
 	rescue
 		abort "cannot open '#{rslv}' for writing: #{$!}"
 	ensure

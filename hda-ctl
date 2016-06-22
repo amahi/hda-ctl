@@ -87,7 +87,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "6.0.1";
+my $version = "7.0.0";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -1040,7 +1040,7 @@ sub basic_checks {
 }
 
 sub get_platform {
-	open (my $file, "< /etc/issue") or return "unknown";
+	open (my $file, "< /etc/system-release") or return "unknown";
 	my $p = <$file>;
 	chomp $p;
 	return "fedora" if ($p =~ /Fedora/);
@@ -1204,12 +1204,12 @@ sub restart_network {
 }
 
 sub get_os_version {
-	if (open (my $file, "< /etc/issue")) {
+	if (open (my $file, "< /etc/system-release")) {
 		my $f = <$file>;
 		chomp $f;
 		return uri_escape($f);
 	}
-	if (open (my $file, "< /etc/system-release")) {
+	if (open (my $file, "< /etc/issue")) {
 		my $f = <$file>;
 		chomp $f;
 		return uri_escape($f);
