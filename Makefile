@@ -41,3 +41,12 @@ clean:
 
 install: rpm
 	(cd release && sudo rpm -Uvh hda-ctl-$(VERSION)-*.rpm)
+
+install-on-system:
+	sudo dnf -y install bc bind-utils cadaver fpaste httpd mariadb-server monit \
+		"perl(DBI)" "perl(LWP::Protocol::https)" "perl(LWP::Simple)" "perl(URI::Escape)" \
+		perl-Authen-PAM perl-LWP-Protocol-https perl-URI perl-libwww-perl \
+		php php-mysqlnd pmount ruby-augeas "rubygem(ruby-dbus)" rubygem-mysql2 samba \
+		wget hddtemp httpd mariadb-server mlocate mod_passenger "perl(DBI)" pmount \
+		rubygem-passenger rubygem-passenger-native rubygem-rake wol \
+		php-gd php-mbstring php-mcrypt php-xml

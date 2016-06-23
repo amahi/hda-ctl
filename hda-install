@@ -1268,13 +1268,6 @@ def do_fedora12_lockdown
 	do_system_silent('pklalockdown --lockdown org.freedesktop.packagekit.package-install')
 end
 
-def special_yum_update_for_fedora9
-	rpm = "http://mirrors.kernel.org/fedora/updates/9/i386.newkey/yum-3.2.21-2.fc9.noarch.rpm"
-	# ignore the result - it may fail if some users have it
-	# already
-	do_system_multiple("rpm -Uvh #{rpm}")
-end
-
 def main
 	version if @opt["V"]
 
@@ -1295,9 +1288,6 @@ def main
 	set_standard_out
 
 	check_install_code inst_code
-
-	# remove for f10
-	# special_yum_update_for_fedora9
 
 	if @opt["s"] || @opt["d"] ||
 		@opt["n"] || @opt["h"] || @opt["w"] || @opt["o"]
