@@ -1,8 +1,8 @@
 [Unit]
 Description=Amahi HDA controller
 ConditionPathExists=/usr/bin/hda-ctl
-Requires=rsyslog.service network.target NetworkManager.service
-After=network.target rsyslog.service NetworkManager.service mysqld.service
+Requires=network.target NetworkManager.service
+After=network.target NetworkManager.service mariadb.service
 Before=monit.service dnsmasq.service
 
 [Service]
