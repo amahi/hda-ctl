@@ -432,7 +432,7 @@ def start_all_services
 
 	if fedora? or centos?
 		services_stop = [ 'gpm', 'hplip', 'isdn', 'kudzu', 'sendmail',
-			'yum-updatesd', 'dhcrelay', 'ldap', 'rolekit', 'firewalld']
+			'yum-updatesd', 'dhcrelay', 'ldap', 'rolekit', 'firewalld', 'cockpit']
 	else
 		services_stop = []
 	end
