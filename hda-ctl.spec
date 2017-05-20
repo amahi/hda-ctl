@@ -1,7 +1,7 @@
 %global rubyrelease 2.2.3
 
 Name:           hda-ctl
-Version: 7.2.1
+Version: 10.0.0
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
@@ -11,7 +11,7 @@ License:        GPL
 Source:         %{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-Requires: hda-platform >= 6.0.0
+Requires: hda-platform >= 10.0.0
 Requires: bash >= 4.2.48-2
 Requires: dnsmasq, sudo >= 1.7.2
 Requires: mariadb-server samba httpd
