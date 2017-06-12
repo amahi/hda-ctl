@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "10.0.0"
+$version = "10.1.0"
 
 # default network device
 @network_device = "eth0"
@@ -428,7 +428,7 @@ def start_all_services
 
 	# NOTE: monit must be the last one, to prevent race conditions
 	services_start = [ 'hda-ctl', HTTPD_SERVERNAME, 'dnsmasq', NETWORK_SERVERNAME,
-	MYSQL_SERVERNAME, SMB_SERVERNAME, NMB_SERVERNAME, 'monit', 'hddtemp']
+	MYSQL_SERVERNAME, SMB_SERVERNAME, NMB_SERVERNAME, 'monit', 'hddtemp', 'docker']
 
 	if fedora? or centos?
 		services_stop = [ 'gpm', 'hplip', 'isdn', 'kudzu', 'sendmail',
@@ -697,6 +697,7 @@ def do_install_rpms
 	rpms << "fpaste perl-DBI rsync wget curl cronie pmount"
 	rpms << "v8"
 	rpms << "php-gd php-mbstring php-xml php-mcrypt"
+	rpms << "docker"
 
 	list = rpms.join(' ').split(' ')
 	to_install = list.delete_if { |pname| installed.select{|p| p =~ /^#{pname}-[0-9]/} != [] }

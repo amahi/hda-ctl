@@ -1,4 +1,4 @@
-VERSION=10.0.0
+VERSION=10.1.0
 RPMBUILDDIR=$(HOME)/rpmbuild
 
 # SIGN=--sign
@@ -19,6 +19,7 @@ dist: hda-ctl-hup
 		release/hda-ctl-$(VERSION)/
 	(cd release && tar -czvf hda-ctl-$(VERSION).tar.gz hda-ctl-$(VERSION))
 	(cd release && rm -rf hda-ctl-$(VERSION))
+
 update-header:
 	sed -i -e "s/version *= *\"[0-9.]*\"/version = \"$(VERSION)\"/" hda-ctl
 	sed -i -e "s/version *= *\"[0-9.]*\"/version = \"$(VERSION)\"/" hda-install
