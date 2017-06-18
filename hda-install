@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "10.0.0"
+$version = "10.1.0"
 
 # default network device
 @network_device = "eth0"
@@ -37,7 +37,7 @@ DATABASE_NAME = "hda_production"
 DATABASE_USER = "amahihda"
 DATABASE_PASSWORD = "AmahiHDARulez"
 DATABASE_MAIN_USER = "root"
-DATABASE_MAIN_PASSWORD = "hda"
+DATABASE_MAIN_PASSWORD = "AmahiDBRulez"
 GREYHOLE_DATABASE = "greyhole"
 
 # upstart conf file for an ubuntu system
@@ -238,8 +238,11 @@ def clone_perm(i, o)
 end
 
 def initialize_mysql
+	message "Initializing MySQL"
+
 	# configure mysql daemon - fail safe
-	do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} password '#{DATABASE_MAIN_PASSWORD}'"
+	#do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} password '#{DATABASE_MAIN_PASSWORD}'"
+	do_system_silent "echo \"GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' IDENTIFIED BY '#{DATABASE_MAIN_PASSWORD}' WITH GRANT OPTION;\" | mysql -u #{DATABASE_MAIN_USER}"
 	# drop it first, force and silent, since most times it will not be there
 	# do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} -f drop #{DATABASE_NAME}"
 	# do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} create #{DATABASE_NAME}"
@@ -820,8 +823,6 @@ def do_full_install(hda)
 
 	# disable DNSSEC
 	disable_dnssec
-
-	message "Initializing MySQL"
 
 	# initialize mysql
 	initialize_mysql
