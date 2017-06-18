@@ -1,7 +1,7 @@
 %global rubyrelease 2.2.3
 
 Name:           hda-ctl
-Version: 10.1.0
+Version: 10.1.1
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
@@ -66,6 +66,7 @@ rm -rf %{buildroot}
 %{__install} -D -m 0644 -p amahi-installer.service %{buildroot}%{_unitdir}/amahi-installer.service
 %{__install} -p hda-ctl.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/hda-ctl
 %{__install} -p amahi-hda %{buildroot}/usr/share/hda-ctl/amahi-hda
+%{__install} -p -m 0755 mount_shares_locally %{buildroot}/usr/share/hda-ctl/
 %{__install} -m 0644 -p hda-ctl.logrotate %{buildroot}%{_sysconfdir}/logrotate.d/hda-ctl
 
 %{__mkdir} -p %{buildroot}%{_prefix}/lib/systemd/system-preset/
@@ -140,6 +141,9 @@ fi
 %{_prefix}/lib/systemd/system-preset/70-amahi.preset
 
 %changelog
+* Sat Jun 18 2017 carlos puchol <cpg+git@amahi.org>
+- remove strict password checking
+- add mount_shares_locally
 * Mon Mar 4 2013 carlos puchol <cpg+git@amahi.org>
 - add logrotate
 * Sun Jan 13 2013 carlos puchol <cpg+git@amahi.org>
