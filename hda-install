@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "10.1.1"
+$version = "10.2.0"
 
 # default network device
 @network_device = "eth0"
@@ -37,7 +37,7 @@ DATABASE_NAME = "hda_production"
 DATABASE_USER = "amahihda"
 DATABASE_PASSWORD = "AmahiHDARulez"
 DATABASE_MAIN_USER = "root"
-DATABASE_MAIN_PASSWORD = "AmahiDBRulez"
+DATABASE_MAIN_PASSWORD = "hda"
 GREYHOLE_DATABASE = "greyhole"
 
 # upstart conf file for an ubuntu system
