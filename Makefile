@@ -1,4 +1,4 @@
-VERSION=10.2.0
+VERSION=10.3.0
 RPMBUILDDIR=$(HOME)/rpmbuild
 
 # SIGN=--sign
@@ -49,4 +49,4 @@ install-on-system:
 		php php-mysqlnd pmount ruby-augeas "rubygem(ruby-dbus)" rubygem-mysql2 samba \
 		wget hddtemp httpd mariadb-server mlocate mod_passenger "perl(DBI)" pmount \
 		rubygem-passenger rubygem-passenger-native rubygem-rake wol \
-		php-gd php-mbstring php-mcrypt php-xml
+		php-gd php-mbstring php-mcrypt php-xml dnsmasq psmisc rubygem-rake v8 python rubygem-json

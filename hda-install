@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "10.2.0"
+$version = "10.3.0"
 
 # default network device
 @network_device = "eth0"
@@ -412,6 +412,7 @@ def do_samba
 end
 
 def in_file?(file, string)
+	return false unless File.exists?(file)
 	! File.open(file){|file| file.grep(/#{string}/) }.empty?
 end
 
