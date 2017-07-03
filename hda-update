@@ -11,6 +11,16 @@ then
 	exit 0;
 fi
 
+# fix for stronger passwords in mariadb https://bugs.amahi.org/issues/2263
+if [ -e /etc/my.cnf.d/cracklib_password_check.cnf ]
+then
+	rm -f /etc/my.cnf.d/cracklib_password_check.cnf
+	systemctl try-restart mariadb
+	echo "===================================================="
+	echo "Work-around for cracklib mariadb https://bugs.amahi.org/issues/2263 applied"
+	echo "===================================================="
+fi
+
 # three attempts
 for i in 1 2 3; do
 	echo "===================================================="
