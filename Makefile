@@ -1,4 +1,4 @@
-VERSION=10.1.0
+VERSION=10.4.0
 RPMBUILDDIR=$(HOME)/rpmbuild
 
 # SIGN=--sign
@@ -16,7 +16,7 @@ dist: hda-ctl-hup
 		hda-update hda-change-gw hda-change-dns amahi-installer.service \
 		web-installer amahi-installer hda-php-zone-change hda-fix-sudoers \
 		hda-privs networking.ubuntu 70-amahi.preset hda-change-network \
-		release/hda-ctl-$(VERSION)/
+		mount_shares_locally release/hda-ctl-$(VERSION)/
 	(cd release && tar -czvf hda-ctl-$(VERSION).tar.gz hda-ctl-$(VERSION))
 	(cd release && rm -rf hda-ctl-$(VERSION))
 
@@ -50,4 +50,4 @@ install-on-system:
 		php php-mysqlnd pmount ruby-augeas "rubygem(ruby-dbus)" rubygem-mysql2 samba \
 		wget hddtemp httpd mariadb-server mlocate mod_passenger "perl(DBI)" pmount \
 		rubygem-passenger rubygem-passenger-native rubygem-rake wol \
-		php-gd php-mbstring php-mcrypt php-xml
+		php-gd php-mbstring php-mcrypt php-xml dnsmasq psmisc rubygem-rake v8 python rubygem-json

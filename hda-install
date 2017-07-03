@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "10.1.0"
+$version = "10.4.0"
 
 # default network device
 @network_device = "eth0"
@@ -238,11 +238,16 @@ def clone_perm(i, o)
 end
 
 def initialize_mysql
+	message "Initializing MariaDB"
+
+	do_system_silent "rm /etc/my.cnf.d/cracklib_password_check.cnf"
+
 	# configure mysql daemon - fail safe
-	do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} password '#{DATABASE_MAIN_PASSWORD}'"
-	# drop it first, force and silent, since most times it will not be there
-	# do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} -f drop #{DATABASE_NAME}"
-	# do_system_silent "mysqladmin -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} create #{DATABASE_NAME}"
+	do_system_silent "echo \"UNINSTALL PLUGIN cracklib_password_check;\" | mysql -u #{DATABASE_MAIN_USER}"
+	do_system_silent "echo \"GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' IDENTIFIED BY '#{DATABASE_MAIN_PASSWORD}' WITH GRANT OPTION;\" | mysql -u #{DATABASE_MAIN_USER}"
+
+	message "Setting up Amahi Dashboard DB user"
+	# drop the DB first, force and silent, since most times it will not be there
 	do_system_silent "echo \"drop database if exists #{DATABASE_NAME}; create database #{DATABASE_NAME}; GRANT ALL PRIVILEGES ON *.* TO '#{DATABASE_USER}'@'localhost' IDENTIFIED BY '#{DATABASE_PASSWORD}' WITH GRANT OPTION;\" | mysql -u #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD}"
 end
 
@@ -407,6 +412,7 @@ def do_samba
 end
 
 def in_file?(file, string)
+	return false unless File.exists?(file)
 	! File.open(file){|file| file.grep(/#{string}/) }.empty?
 end
 
@@ -821,8 +827,6 @@ def do_full_install(hda)
 
 	# disable DNSSEC
 	disable_dnssec
-
-	message "Initializing MySQL"
 
 	# initialize mysql
 	initialize_mysql
