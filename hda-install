@@ -902,7 +902,7 @@ def do_full_install(hda)
 		disable_selinux
 	end
 
-	do_network
+	do_network(iface)
 
 	puts "****************************************************\n"
 	puts "  Amahi installed successfully! Please reboot it!\n"
@@ -964,7 +964,7 @@ def rand_uuid
 	[8,4,4,4,12].map {|n| rand_hex(n)}.join('-')
 end
 
-def setup_network_manager(ip, gw, dns1, dns2, domain)
+def setup_network_manager(ip, gw, dns1, dns2, domain, iface)
 
 	puts "starting network install with IP: #{ip} and GW: #{gw}"
 
@@ -984,7 +984,7 @@ def setup_network_manager(ip, gw, dns1, dns2, domain)
 	#DEBUG: puts settings.inspect
 	settings_iface = settings["org.freedesktop.NetworkManager.Settings"]
 	connections = settings_iface.ListConnections.first
-	ethernet = select_connection(nm_service, connections)
+	ethernet = select_connection(nm_service, connections, iface)
 	if ethernet
 		s = ethernet["org.freedesktop.NetworkManager.Settings.Connection"].GetSettings
 		#DEBUG: puts s.inspect
@@ -1011,26 +1011,39 @@ def setup_network_manager(ip, gw, dns1, dns2, domain)
 end
 
 # select an ethernet connection - returns a connection object or nil
-def select_connection(network_manager, connections)
+def select_connection(network_manager, connections, iface)
 	connections.each do |conn|
 		conn_object = network_manager.object(conn)
 		conn_object.introspect
 		settings = conn_object["org.freedesktop.NetworkManager.Settings.Connection"].GetSettings
 		conn_settings = settings.first['connection']
-		if conn_settings['type'] == "802-3-ethernet"
-			puts "Using first ethernet connection \"#{conn_settings['id']}\"."
-			return conn_object
+		if iface == nil
+			if conn_settings['type'] == "802-3-ethernet"
+				puts "Using first ethernet connection \"#{conn_settings['id']}\"."
+				return conn_object
+			else
+				puts "Ignoring non-ethernet connection \"#{conn_settings['id']}\"."
+			end
 		else
-			puts "Ignoring non-ethernet connection \"#{conn_settings['id']}\"."
+			if conn_settings['type' == "802-3-ethernet && conn_settings['id'] == iface
+				puts "Using ethernet connection \"#{conn_settings['id]}\"."
+				return conn_object
+			else
+				puts "Ignorning non-ethernet connection \"#{conn_settings['id']}\"."
+			end
 		end
 	end
 	nil
 end
 
 # new call to try via nmcli 
-def setup_network_manager_nmcli(ip, gw, dns1, dns2, domain)
+def setup_network_manager_nmcli(ip, gw, dns1, dns2, domain, iface)
 	# active ethernet devices list
-	dl = %x(nmcli con show --active).split("\n").map{|l| l =~ /802-3-ethernet/ ? l : nil }.compact
+	if iface == nil
+		dl = %x(nmcli con show --active).split("\n").map{|l| l =~ /802-3-ethernet/ ? l : nil }.compact
+	else
+		dl = %x(nmcli con show |grep "#{iface}").split("\n").map{|l| l =~ /802-3-ethernet/ ? l : nil }.compact
+	end
 	return if dl.empty?
 	# get the device id of the first ethernet device
 	device = dl.first.split(/ +/).last
@@ -1044,7 +1057,7 @@ def setup_network_manager_nmcli(ip, gw, dns1, dns2, domain)
 	do_system("nmcli con modify #{device} #{vl}")
 end
 
-def do_network
+def do_network(iface)
 	netmask = @settings['netmask']
 	self_address = @settings['self-address']
 	domain = @settings['domain']
@@ -1066,12 +1079,12 @@ def do_network
 	ip = "#{net}.#{self_address}"
 	gwy = "#{net}.#{gw}"
 	begin
-		setup_network_manager(ip, gwy, dns1, dns2, domain)
+		setup_network_manager(ip, gwy, dns1, dns2, domain, iface)
 	rescue => e
 		begin
 			puts "WARNING: cannot setup network manager via API! Exception: #{e}"
 			puts "WARNING: trying via NMCLI as a secondary alternative!"
-			setup_network_manager_nmcli(ip, gwy, dns1, dns2, domain)
+			setup_network_manager_nmcli(ip, gwy, dns1, dns2, domain, iface)
 		rescue => e2
 			puts "WARNING: cannot setup network manager via NMCLI! Exception: #{e2}"
 			puts "ERROR: setup your HDA with a static IP by hand!"
@@ -1287,6 +1300,12 @@ def main
 
 	inst_code = ARGV[0]
 
+	if ARGV.size > 1
+		iface = ARGV[1]
+	else
+		iface = nil
+	end
+
 	do_basic_checks
 
 	set_standard_out
@@ -1300,7 +1319,7 @@ def main
 		get_db_settings
 
 		do_httpd if @opt["h"]
-		do_network if @opt["n"]
+		do_network(iface) if @opt["n"]
 		do_samba if @opt["s"]
 		do_db inst_code if @opt["d"]
 		autoconfigure_network
