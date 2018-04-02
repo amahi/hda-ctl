@@ -87,7 +87,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "10.5.0";
+my $version = "10.5.2";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -277,6 +277,9 @@ sub resolve_dns_ips {
 	}
 	if ($settings{'dns'} eq 'google') {
 		return ("8.8.8.8", "8.8.4.4");
+	}
+	if ($settings{'dns'} eq 'cloudflare') {
+		return ("1.1.1.1", "1.0.0.1");
 	}
 	if ($settings{'dns'} eq 'opennic') {
 		return ("173.230.156.28", "23.90.4.6");
