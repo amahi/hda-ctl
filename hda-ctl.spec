@@ -1,7 +1,7 @@
 %global rubyrelease 2.2.3
 
 Name:           hda-ctl
-Version: 10.4.0
+Version: 10.6.0
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
@@ -68,6 +68,7 @@ rm -rf %{buildroot}
 %{__install} -p amahi-hda %{buildroot}/usr/share/hda-ctl/amahi-hda
 %{__install} -p -m 0755 mount_shares_locally %{buildroot}/usr/share/hda-ctl/
 %{__install} -m 0644 -p hda-ctl.logrotate %{buildroot}%{_sysconfdir}/logrotate.d/hda-ctl
+%{__install} -D -m 0644 -p amahi-release %{buildroot}%{_sysconfdir}/amahi-release
 
 %{__mkdir} -p %{buildroot}%{_prefix}/lib/systemd/system-preset/
 %{__install} -D -m 0644 -p 70-amahi.preset %{buildroot}%{_prefix}/lib/systemd/system-preset/70-amahi.preset
@@ -129,6 +130,7 @@ fi
 %{_bindir}/hda-settings
 %{_sysconfdir}/sysconfig/hda-ctl
 %{_sysconfdir}/skel/Desktop
+%{_sysconfdir}/amahi-release
 /root/Desktop/*
 %{_sysconfdir}/cron.hourly/hda-update
 %attr(0440, root, root)%{_sysconfdir}/sudoers.d/amahi
@@ -141,7 +143,7 @@ fi
 %{_prefix}/lib/systemd/system-preset/70-amahi.preset
 
 %changelog
-* Sat Jun 18 2017 carlos puchol <cpg+git@amahi.org>
+* Sun Jun 18 2017 carlos puchol <cpg+git@amahi.org>
 - remove strict password checking
 - add mount_shares_locally
 * Mon Mar 4 2013 carlos puchol <cpg+git@amahi.org>
