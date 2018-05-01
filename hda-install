@@ -917,20 +917,7 @@ def do_full_install(hda)
 
 	final_message2
 
-	message "\nThe system needs to reboot for your settings to take effect."
-	message "\nWould you like to reboot now? (strongly recommended)? (yes/no)?"
-
-
-	system "reboot" if @opt["y"]
-
-	resp = $stdin.gets
-
-	if resp != nil
-		if resp =~ /(y|yes)/
-			system "sync; sync; reboot"
-			exit 0 # just in case
-		end
-	end
+	system "sync; sync; reboot" if @opt["y"]
 
 	message "OK. It is strongly recommended that you reboot your HDA ASAP."
 end
