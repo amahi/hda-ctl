@@ -87,7 +87,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "10.6.0";
+my $version = "10.6.1";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -269,7 +269,7 @@ sub db_disconnect {
 sub resolve_dns_ips {
 	unless (defined($settings{'dns'})) {
 		# big ol' default for dns
-		return ("173.230.156.28", "23.90.4.6");
+		return ("1.1.1.1", "1.0.0.1");
 	}
 	my $service = $settings{'dns'};
 	if ($settings{'dns'} eq 'opendns') {
@@ -280,9 +280,6 @@ sub resolve_dns_ips {
 	}
 	if ($settings{'dns'} eq 'cloudflare') {
 		return ("1.1.1.1", "1.0.0.1");
-	}
-	if ($settings{'dns'} eq 'opennic') {
-		return ("173.230.156.28", "23.90.4.6");
 	}
 	my $extdns1 = "8.8.8.8"; # 2nd default
 	my $extdns2 = "8.8.4.4"; # 2nd default
