@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "10.5.2"
+$version = "10.6.0"
 
 # default network device
 @network_device = "eth0"
@@ -471,7 +471,7 @@ def start_all_services
 end
 
 def start_service(service)
-	if fedora?
+	if fedora? or centos?
 		do_system "/usr/bin/systemctl start #{service}.service"
 	elsif ubuntu? and File.exist?(UPSTART_CONF % service)
 		do_system "/sbin/initctl start #{service}"
