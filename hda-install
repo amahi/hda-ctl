@@ -542,6 +542,7 @@ def check_install_code(inst_code)
 	url = "https://api.amahi.org/api2/install/#{inst_code}?os=#{os}&arch=#{arch}&ver=#{$version}"
 
 	@system_configuration = nil
+        file = File.open('/root/system_config')
 
 	message "Retrieving install code ..."
 
@@ -550,6 +551,7 @@ def check_install_code(inst_code)
 	(1..3).each do
 		begin
 			@system_configuration = open(url, "User-Agent" => "ruby/#{RUBY_VERSION}").read
+                       
 		rescue
 			sleep time
 			time += 1
@@ -581,7 +583,6 @@ def check_install_code(inst_code)
 
 	if @system_configuration =~ /^error: unknown code$/
 		puts @system_configuration
-		# message @system_configuration
 		message "ERROR: install code '#{inst_code}' is not a valid install code."
 		exit(-1)
 	elsif @system_configuration_length == 0
@@ -591,10 +592,10 @@ def check_install_code(inst_code)
 	message "Install code looks good"
 end
 
-def copy_remote_db_configuration(hda)
+def copy_remote_db_configuration()
 
 	if @system_configuration_length == 0
-		abort "hda-install: ERROR: configuration for install code '" + hda + "' is empty."
+		abort "hda-install: ERROR: configuration for install code is empty."
 	end
 
 	begin
@@ -611,7 +612,7 @@ end
 
 def do_db(install_code)
 	puts "Syncing settings for #{install_code} ... "
-	copy_remote_db_configuration install_code
+	copy_remote_db_configuration
 	puts "Syncing settings done."
 end
 
@@ -776,7 +777,7 @@ def link_apaste
 end
 
 
-def do_full_install(hda)
+def do_full_install()
 
 	if fedora? or centos?
 		selinux_permissive
@@ -840,7 +841,7 @@ def do_full_install(hda)
 
 	# update DB with remote data
 	message "Activating your HDA's settings"
-	copy_remote_db_configuration hda
+	copy_remote_db_configuration
 
 	sleep 1
 
@@ -1213,6 +1214,17 @@ def set_standard_out
 	message "Verbose log file at '#{logfile}'."
 end
 
+def copy_system_configuration
+        if File.exists?('/etc/system_configuration_amahi')
+                     file = File.open('/etc/system_configuration_amahi')              
+                     @system_configuration = file.read
+                     @system_configuration_length = @system_configuration.size
+        else
+                     message "ERROR - Amahi Server configuration not found in /etc/"
+                     exit 1
+        end
+end                             
+
 def do_basic_checks
 	ENV["PATH"] += ":/sbin:/usr/sbin:/bin"
 
@@ -1245,7 +1257,7 @@ def do_basic_checks
 		rescue
 			g = nil
 		end
-
+               
 		unless g
 			(1..3).each do
 				do_system_silent "service monit stop"
@@ -1275,7 +1287,7 @@ end
 
 def main
 	version if @opt["V"]
-
+  
 	if @opt["o"]
 		set_standard_out
 		if fedora? or centos?
@@ -1284,15 +1296,19 @@ def main
 		exit 0
 	end
 
-	usage unless ARGV.size > 0
-
-	inst_code = ARGV[0]
-
+	#usage unless ARGV.size > 0
+        
 	do_basic_checks
 
 	set_standard_out
 
-	check_install_code inst_code
+        #to support both INSTALL CODE or no INSTALL CODE
+        if ARGV.size > 0 && ARGV[0].length > 4
+	              inst_code = ARGV[0]
+                      check_install_code inst_code
+        else 
+                      copy_system_configuration
+        end
 
 	if @opt["s"] || @opt["d"] ||
 		@opt["n"] || @opt["h"] || @opt["w"] || @opt["o"]
@@ -1310,8 +1326,8 @@ def main
 
 		return
 	end
-
-	do_full_install inst_code
+        
+	do_full_install
 end
 
 main
