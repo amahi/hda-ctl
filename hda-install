@@ -542,8 +542,6 @@ def check_install_code(inst_code)
 	url = "https://api.amahi.org/api2/install/#{inst_code}?os=#{os}&arch=#{arch}&ver=#{$version}"
 
 	@system_configuration = nil
-        file = File.open('/root/system_config')
-
 	message "Retrieving install code ..."
 
 	time = 3
@@ -1266,7 +1264,7 @@ def do_basic_checks
 				do_system_silent "killall dhclient"
 				do_system_silent "service " + NAMED_SERVERNAME + " stop"
 				sleep 1
-				do_system_silent "dhclient eth0"
+				do_system_silent "dhclient"
 				sleep 1
 				begin
 					g = open('http://www.yahoo.com/').read
