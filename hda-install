@@ -51,13 +51,16 @@ OLDOUT = $stdout.dup
 
 def set_platform
     issue = nil
-    if File.exists?('/etc/system-release')
+    if File.exists?('/etc/amahi-release')
+	file = nil   
+	issue = File.open("/etc/amahi-release", "r")
+    elsif File.exists?('/etc/system-release')
 	file = nil
 	issue = File.open("/etc/system-release", "r")
     elsif File.exists?('/etc/issue')
 	issue = File.open("/etc/issue", "r")
     else
-	raise "Ohhh. System not known. Sowwy."
+	raise "Ohhh. System not known. Sorry."
     end
     line = issue.gets;
     $platform = "unknown";
