@@ -1056,6 +1056,16 @@ sub basic_checks {
 }
 
 sub get_platform {
+
+
+        if (open (my $file, "< /etc/amahi-release")) {
+		my $p = <$file>;
+	        chomp $p;
+	        return "fedora" if ($p =~ /Fedora/);
+	        return "debian" if ($p =~ /Debian/);
+	        return "ubuntu" if ($p =~ /Ubuntu/);
+	}
+
 	open (my $file, "< /etc/system-release") or return "unknown";
 	my $p = <$file>;
 	chomp $p;
