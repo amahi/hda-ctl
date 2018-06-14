@@ -47,7 +47,7 @@ LEGACY_INIT_PATH = "/etc/init.d/"
 
 OLDOUT = $stdout.dup
 
-@opt = ARGV.getopts("VfsdrDhnwmoyqi:p")
+@opt = ARGV.getopts("VfusdrDhnwmoyqi:p")
 
 def set_platform
     issue = nil
@@ -596,7 +596,7 @@ end
 def copy_remote_db_configuration()
 
 	if @system_configuration_length == 0
-		abort "hda-install: ERROR: configuration for install code is empty."
+		abort "hda-install: ERROR: @system_configuration is empty."
 	end
 
 	begin
@@ -1158,7 +1158,8 @@ end
 
 def usage
 
-	puts "usage: hda-install [options] YOUR_INSTALL_CODE"
+	puts "usage: hda-install [options]... [YOUR_INSTALL_CODE]... "
+        puts "Setup Amahi Server, either from 'system_configuration_amahi' file in '/etc' OR from INSTALL_CODE"
 	puts " options:"
 	puts "  -f: force"
 	puts "  -r: exclude ruby install"
@@ -1173,6 +1174,7 @@ def usage
 	puts "  -i device: use this interface for networking (default: #{@network_device})"
 	puts "  -p: VPS mode"
 	puts "  -V: version"
+        puts "  -u: usage"
 	exit(-1)
 end
 
@@ -1221,7 +1223,7 @@ def copy_system_configuration
                      @system_configuration = file.read
                      @system_configuration_length = @system_configuration.size
         else
-                     message "ERROR - Amahi Server configuration not found in /etc/"
+                     message "ERROR - system_configuration_amahi file not found in /etc/"
                      exit 1
         end
 end                             
@@ -1297,7 +1299,7 @@ def main
 		exit 0
 	end
 
-	#usage unless ARGV.size > 0
+	usage if @opt["u"]
         
 	do_basic_checks
 
