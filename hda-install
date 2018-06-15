@@ -47,7 +47,7 @@ LEGACY_INIT_PATH = "/etc/init.d/"
 
 OLDOUT = $stdout.dup
 
-@opt = ARGV.getopts("VfusdrDhnwmoyqi:p")
+@opt = ARGV.getopts("VfusdrDhnwmkoyqi:p")
 
 def set_platform
     issue = nil
@@ -967,7 +967,7 @@ def rand_uuid
 	[8,4,4,4,12].map {|n| rand_hex(n)}.join('-')
 end
 
-def setup_network_manager(ip, gw, dns1, dns2, domain)
+def setup_network_manager(ip, gw, dns1, dns2, domain, iface = nil)
 
 	puts "starting network install with IP: #{ip} and GW: #{gw}"
 
@@ -987,7 +987,7 @@ def setup_network_manager(ip, gw, dns1, dns2, domain)
 	#DEBUG: puts settings.inspect
 	settings_iface = settings["org.freedesktop.NetworkManager.Settings"]
 	connections = settings_iface.ListConnections.first
-	ethernet = select_connection(nm_service, connections)
+	ethernet = select_connection(nm_service, connections, iface)
 	if ethernet
 		s = ethernet["org.freedesktop.NetworkManager.Settings.Connection"].GetSettings
 		#DEBUG: puts s.inspect
@@ -1014,26 +1014,33 @@ def setup_network_manager(ip, gw, dns1, dns2, domain)
 end
 
 # select an ethernet connection - returns a connection object or nil
-def select_connection(network_manager, connections)
+def select_connection(network_manager, connections, iface=nil)
 	connections.each do |conn|
 		conn_object = network_manager.object(conn)
 		conn_object.introspect
 		settings = conn_object["org.freedesktop.NetworkManager.Settings.Connection"].GetSettings
 		conn_settings = settings.first['connection']
-		if conn_settings['type'] == "802-3-ethernet"
-			puts "Using first ethernet connection \"#{conn_settings['id']}\"."
-			return conn_object
-		else
-			puts "Ignoring non-ethernet connection \"#{conn_settings['id']}\"."
-		end
+
+	        if (iface.nil? && conn_settings['type'] == "802-3-ethernet") || (conn_settings['type'] == "802-3-ethernet" && conn_settings['id'] == iface)
+ 				puts "Using first ethernet connection \"#{conn_settings['id']}\"."
+    			        return conn_object
+ 		else
+ 				puts "Ignoring non-ethernet connection \"#{conn_settings['id']}\"."
+ 		end
+ 			
+ 
 	end
 	nil
 end
 
 # new call to try via nmcli 
-def setup_network_manager_nmcli(ip, gw, dns1, dns2, domain)
+def setup_network_manager_nmcli(ip, gw, dns1, dns2, domain, iface = nil)
 	# active ethernet devices list
-	dl = %x(nmcli con show --active).split("\n").map{|l| l =~ /802-3-ethernet/ ? l : nil }.compact
+	if iface.nil?
+ 		dl = %x(nmcli con show --active).split("\n").map{|l| l =~ /802-3-ethernet/ ? l : nil }.compact
+ 	else
+ 		dl = %x(nmcli con show |grep "#{iface}").split("\n").map{|l| l =~ /802-3-ethernet/ ? l : nil }.compact
+ 	end
 	return if dl.empty?
 	# get the device id of the first ethernet device
 	device = dl.first.split(/ +/).last
@@ -1047,7 +1054,7 @@ def setup_network_manager_nmcli(ip, gw, dns1, dns2, domain)
 	do_system("nmcli con modify #{device} #{vl}")
 end
 
-def do_network
+def do_network(iface= nil)
 	netmask = @settings['netmask']
 	self_address = @settings['self-address']
 	domain = @settings['domain']
@@ -1069,12 +1076,12 @@ def do_network
 	ip = "#{net}.#{self_address}"
 	gwy = "#{net}.#{gw}"
 	begin
-		setup_network_manager(ip, gwy, dns1, dns2, domain)
+		setup_network_manager(ip, gwy, dns1, dns2, domain, iface)
 	rescue => e
 		begin
 			puts "WARNING: cannot setup network manager via API! Exception: #{e}"
 			puts "WARNING: trying via NMCLI as a secondary alternative!"
-			setup_network_manager_nmcli(ip, gwy, dns1, dns2, domain)
+			setup_network_manager_nmcli(ip, gwy, dns1, dns2, domain, iface)
 		rescue => e2
 			puts "WARNING: cannot setup network manager via NMCLI! Exception: #{e2}"
 			puts "ERROR: setup your HDA with a static IP by hand!"
@@ -1166,7 +1173,8 @@ def usage
 	puts "  -h: reconfigure httpd"
 	puts "  -s: reconfigure samba"
 	puts "  -d: reconfigure db"
-	puts "  -n: reconfigure network settings"
+	puts "  -n [YOUR_INSTALL_CODE] : reconfigure network settings. [YOUR_INSTALL_CODE] is optional"
+        puts "  -k [YOUR_INSTALL_CODE] [YOUR NETWORK INTERFACE CHOICE]: reconfigure network settings. [YOUR_INSTALL_CODE] is optional"    
 	puts "  -m: reconfigure monit"
 	puts "  -o: disable SELinux and firewall (does not need install code)"
 	puts "  -D: debug output"
@@ -1300,13 +1308,15 @@ def main
 	end
 
 	usage if @opt["u"]
+
+        @system_configuration = nil
         
 	do_basic_checks
 
 	set_standard_out
 
         #to support both INSTALL CODE or no INSTALL CODE
-        if ARGV.size > 0 && ARGV[0].length > 4
+        if (@opt["k"] && ARGV.size == 2 && ARGV[0].length > 4) || (!@opt["k"] && ARGV.size > 0 && ARGV[0].length > 4) #if -k option there, then network interface is always given. So, no of args, if not 2, then INSTALL CODE is not used
 	              inst_code = ARGV[0]
                       check_install_code inst_code
         else 
@@ -1314,13 +1324,21 @@ def main
         end
 
 	if @opt["s"] || @opt["d"] ||
-		@opt["n"] || @opt["h"] || @opt["w"] || @opt["o"]
+		@opt["n"] || @opt["h"] || @opt["w"] || @opt["o"] || @opt["k"]
 
 		db_connect
 		get_db_settings
 
 		do_httpd if @opt["h"]
-		do_network if @opt["n"]
+
+                if @opt["k"] && (inst_code.nil? || inst_code.empty?) && ARGV.size == 1 #if '-k' option is there, network interface is given and install_code is not given
+                         do_network(ARGV[0])
+                elsif @opt["k"] && !(inst_code.nil? || inst_code.empty?) && ARGV.size == 2 #if '-k' option is there & network interface and install_code is given
+                         do_network(ARGV[1])
+		elsif @opt["n"]  #if 'n' option is there
+                         do_network
+                end
+
 		do_samba if @opt["s"]
 		do_db inst_code if @opt["d"]
 		autoconfigure_network
