@@ -1316,7 +1316,11 @@ def main
 	set_standard_out
 
         #to support both INSTALL CODE or no INSTALL CODE
-        if (@opt["k"] && ARGV.size == 2 && ARGV[0].length > 4) || (!@opt["k"] && ARGV.size > 0 && ARGV[0].length > 4) #if -k option there, then network interface is always given. So, no of args, if not 2, then INSTALL CODE is not used
+	
+	#if '@opt["k"]' is true then 'network interface' is always provided. This means, if number of args is 2 (ARGV.size == 2) && 'ARGV[0].length > 4' then valid INSTALL CODE is always provided at first position (ARGV[0]).
+        #or if '@opt["k"]' is false then 'network interface' is not provided. This means, if number of args is > 0 (ARGV.size > 0) && 'ARGV[0].length > 4' then valid INSTALL CODE is provided.
+        #else  do 'copy_system_configuration', if nothing is provided or only 'network interface' is provided.
+        if (@opt["k"] && ARGV.size == 2 && ARGV[0].length > 4) || (!@opt["k"] && ARGV.size > 0 && ARGV[0].length > 4)  
 	              inst_code = ARGV[0]
                       check_install_code inst_code
         else 
