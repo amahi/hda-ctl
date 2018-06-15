@@ -47,7 +47,7 @@ LEGACY_INIT_PATH = "/etc/init.d/"
 
 OLDOUT = $stdout.dup
 
-@opt = ARGV.getopts("VfusdrDhnwmkoyqi:p")
+@opt = ARGV.getopts("VfusdrDhnwmk:oyqi:p")
 
 def set_platform
     issue = nil
@@ -1165,7 +1165,7 @@ end
 
 def usage
 
-	puts "usage: hda-install [options]... [YOUR_INSTALL_CODE]... "
+	puts "usage: hda-install [options]... "
         puts "Setup Amahi Server, either from 'system_configuration_amahi' file in '/etc' OR from INSTALL_CODE"
 	puts " options:"
 	puts "  -f: force"
@@ -1174,12 +1174,12 @@ def usage
 	puts "  -s: reconfigure samba"
 	puts "  -d: reconfigure db"
 	puts "  -n: reconfigure network settings."
-        puts "  -k [YOUR NETWORK INTERFACE CHOICE]: reconfigure network settings."    
+        puts "  -k YOUR NETWORK INTERFACE CHOICE: reconfigure network settings."    
 	puts "  -m: reconfigure monit"
 	puts "  -o: disable SELinux and firewall (does not need install code)"
 	puts "  -D: debug output"
 	puts "  -q: quit after done, do not wait asking for the user input to reboot"
-	puts "  -i device: use this interface for networking (default: #{@network_device})"
+	puts "  -i INSTALL_CODE: use INSTALL CODE to setup amahi server"
 	puts "  -p: VPS mode"
 	puts "  -V: version"
         puts "  -u: usage"
@@ -1316,12 +1316,8 @@ def main
 	set_standard_out
 
         #to support both INSTALL CODE or no INSTALL CODE
-	
-	#if '@opt["k"]' is true then 'network interface' is always provided. This means, if number of args is 2 (ARGV.size == 2) && 'ARGV[0].length > 4' then valid INSTALL CODE is always provided at first position (ARGV[0]).
-        #or if '@opt["k"]' is false then 'network interface' is not provided. This means, if number of args is > 0 (ARGV.size > 0) && 'ARGV[0].length > 4' then valid INSTALL CODE is provided.
-        #else  do 'copy_system_configuration', if nothing is provided or only 'network interface' is provided.
-        if (@opt["k"] && ARGV.size == 2 && ARGV[0].length > 4) || (!@opt["k"] && ARGV.size > 0 && ARGV[0].length > 4)  
-	              inst_code = ARGV[0]
+        if (@opt["i"] && @opt["i"].length > 4)  
+	              inst_code = @opt["i"]
                       check_install_code inst_code
         else 
                       copy_system_configuration
@@ -1332,17 +1328,9 @@ def main
 
 		db_connect
 		get_db_settings
-
-		do_httpd if @opt["h"]
-
-                if @opt["k"] && (inst_code.nil? || inst_code.empty?) && ARGV.size == 1 #if '-k' option is there, network interface is given and install_code is not given
-                         do_network(ARGV[0])
-                elsif @opt["k"] && !(inst_code.nil? || inst_code.empty?) && ARGV.size == 2 #if '-k' option is there & network interface and install_code is given
-                         do_network(ARGV[1])
-		elsif @opt["n"]  #if 'n' option is there
-                         do_network
-                end
-
+                do_httpd if @opt["h"]
+                do_network(@opt["k"]) if @opt["k"]
+                do_network if @opt["n"] && !@opt["k"]
 		do_samba if @opt["s"]
 		do_db inst_code if @opt["d"]
 		autoconfigure_network
