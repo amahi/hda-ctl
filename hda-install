@@ -697,7 +697,7 @@ def do_install_rpms
 	installed = IO.popen('rpm -qa') { |f| f.readlines }
 
 	rpms = []
-	rpms << "fedora-release yum-plugin-fastestmirror"
+	rpms << "yum-plugin-fastestmirror"
 	rpms << "mariadb-server perl-libwww-perl perl-LWP-Protocol-https dnsmasq"
 	rpms << "php dhclient monit perl-Authen-PAM"
 	rpms << "hddtemp ruby-augeas"
