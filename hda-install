@@ -193,7 +193,7 @@ end
 
 @settings = {}
 
-@network_device = @opt['i'] || @network_device
+@network_device = @opt['k'] || @network_device
 
 $net = nil
 $gateway = nil
