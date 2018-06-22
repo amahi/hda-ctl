@@ -486,6 +486,16 @@ end
 
 def get_os_version
 	if fedora? or centos?
+                if File.exists?('/etc/amahi-release')
+                        file = nil
+                        begin
+                                file = File.new "/etc/amahi-release", "r"
+                        rescue
+                                return "cannot-open-amahi-release-file"
+                        end
+                        return file.read.chomp()
+                end
+                "no-amahi-release-file"
 		if File.exists?('/etc/system-release')
 			file = nil
 			begin
