@@ -1,4 +1,4 @@
-VERSION=10.6.3
+VERSION=10.6.4
 RPMBUILDDIR=$(HOME)/rpmbuild
 
 # SIGN=--sign
