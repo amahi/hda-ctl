@@ -75,6 +75,12 @@ def setup_network_manager(ip, gw, dns1, dns2)
 	if ethernet
 		s = ethernet["org.freedesktop.NetworkManager.Settings.Connection"].GetSettings
 		new_settings = s[0].merge(con)
+		# FIXME we're not sure why this needs to be done now to avoid dbus exceptions
+		new_settings["connection"].delete 'permissions'
+		new_settings["connection"].delete 'secondaries'
+		new_settings["connection"].delete 'mac-address'
+		new_settings.delete "802-3-ethernet"
+		new_settings.delete "ipv6"
 		ethernet["org.freedesktop.NetworkManager.Settings.Connection"].Update(new_settings)
 	else
 		# if we have not found an ethernet connection configured, create one
