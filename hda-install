@@ -173,9 +173,11 @@ end
 def autoconfigure_network
 	net, gw, device = autodetect_network
 	if net and gw
-		if @database
+		if @database && (net != @settings['net'] || gw != @settings['gateway'])
 			sth = @database.query("UPDATE #{DATABASE_NAME}.settings SET value = '#{net}' WHERE settings.name = 'net' LIMIT 1 ;")
 			sth = @database.query("UPDATE #{DATABASE_NAME}.settings SET value = '#{gw}' WHERE settings.name = 'gateway' LIMIT 1 ;")
+                        # load db settings
+	                get_db_settings
 		end
 		# set the device here from the existing setup!
 		@network_device = device
@@ -861,10 +863,10 @@ def do_full_install()
 
 	message "Initializing settings"
 
-	# load db settings
+        # load db settings
 	get_db_settings
 
-	message "Configuring network"
+        message "Configuring network"
 	autoconfigure_network
 
 	message "Setting up watchdog monitor"
