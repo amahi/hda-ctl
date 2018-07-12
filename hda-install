@@ -39,6 +39,7 @@ DATABASE_PASSWORD = "AmahiHDARulez"
 DATABASE_MAIN_USER = "root"
 DATABASE_MAIN_PASSWORD = "hda"
 GREYHOLE_DATABASE = "greyhole"
+API_URL_BASE = "https://api.amahi.org"
 
 # upstart conf file for an ubuntu system
 UPSTART_CONF = "/etc/init/%s.conf"
@@ -184,10 +185,10 @@ def autoconfigure_network
 		puts "Installer automatically determined that your router/gateway IP address is: #{net}.#{gw}, over #{device}"
 		puts "If this is incorrect, please report it, then run hda-change-gw after"
 		puts "installation is finished to set your gateway settings to the proper IP."
-		postData = Net::HTTP.post_form(URI.parse('https://api-ddns.amahi.org/api2/'), {'net'=> net, 'gw' => gw })
+		postData = Net::HTTP.post_form(URI.parse(API_URL_BASE), {'net'=> net, 'gw' => gw })
 	else
 		puts "WARNING: cannot autoconfigure the network!"
-		postData = Net::HTTP.post_form(URI.parse('https://api-ddns.amahi.org/api2/'), {'net'=> net, 'gw' => gw })
+		postData = Net::HTTP.post_form(URI.parse(API_URL_BASE), {'net'=> net, 'gw' => gw })
 	end
 end
 
