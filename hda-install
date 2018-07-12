@@ -51,7 +51,7 @@ OLDOUT = $stdout.dup
 
 def set_platform
     issue = nil
-    if File.exists?('/etc/autamahi-release')
+    if File.exists?('/etc/amahi-release')
 	file = nil   
 	issue = File.open("/etc/amahi-release", "r")
     elsif File.exists?('/etc/system-release')
