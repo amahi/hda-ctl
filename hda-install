@@ -51,7 +51,7 @@ OLDOUT = $stdout.dup
 
 def set_platform
     issue = nil
-    if File.exists?('/etc/amahi-release')
+    if File.exists?('/etc/autamahi-release')
 	file = nil   
 	issue = File.open("/etc/amahi-release", "r")
     elsif File.exists?('/etc/system-release')
@@ -173,19 +173,21 @@ end
 def autoconfigure_network
 	net, gw, device = autodetect_network
 	if net and gw
-		if @database && (net != @settings['net'] || gw != @settings['gateway'])
+		# set the device here from the existing setup!
+		@network_device = device
+		if net != @settings['net'] || gw != @settings['gateway']
 			sth = @database.query("UPDATE #{DATABASE_NAME}.settings SET value = '#{net}' WHERE settings.name = 'net' LIMIT 1 ;")
 			sth = @database.query("UPDATE #{DATABASE_NAME}.settings SET value = '#{gw}' WHERE settings.name = 'gateway' LIMIT 1 ;")
                         # load db settings
 	                get_db_settings
 		end
-		# set the device here from the existing setup!
-		@network_device = device
 		puts "Installer automatically determined that your router/gateway IP address is: #{net}.#{gw}, over #{device}"
 		puts "If this is incorrect, please report it, then run hda-change-gw after"
 		puts "installation is finished to set your gateway settings to the proper IP."
+		postData = Net::HTTP.post_form(URI.parse('https://api-ddns.amahi.org/api2/'), {'net'=> net, 'gw' => gw })
 	else
 		puts "WARNING: cannot autoconfigure the network!"
+		postData = Net::HTTP.post_form(URI.parse('https://api-ddns.amahi.org/api2/'), {'net'=> net, 'gw' => gw })
 	end
 end
 
