@@ -1120,7 +1120,11 @@ sub do_action {
 	my $os = &get_os_version();
 	my $arch = &get_arch();
 	my $url = "https://api-ddns.amahi.org/api2/$action?api_key=$api_key&os=$os&arch=$arch&ver=$version";
-	my $content = get($url);
+	my $ua = LWP::UserAgent->new;
+        my $response = $ua->put($url);
+        if (!$response->is_success) {
+                &log("amahi.org action '$action' failed with '$response->status_line'");
+        }
 }
 
 sub do_periodic_update {
