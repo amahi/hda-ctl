@@ -173,6 +173,7 @@ end
 # Write the network information to the database
 def autoconfigure_network
 	net, gw, device = autodetect_network
+	api_key = @settings['api-key']
 	if net and gw
 		# set the device here from the existing setup!
 		@network_device = device
@@ -185,10 +186,10 @@ def autoconfigure_network
 		puts "Installer automatically determined that your router/gateway IP address is: #{net}.#{gw}, over #{device}"
 		puts "If this is incorrect, please report it, then run hda-change-gw after"
 		puts "installation is finished to set your gateway settings to the proper IP."
-		postData = Net::HTTP.post_form(URI.parse(API_URL_BASE+'/router_ip_update'), {'net'=> net, 'gw' => gw })
+		postData = Net::HTTP.post_form(URI.parse(API_URL_BASE+'/router_ip_update'), {'api_key' => api_key , 'net'=> net, 'gw' => gw  })
 	else
 		puts "WARNING: cannot autoconfigure the network!"
-		postData = Net::HTTP.post_form(URI.parse(API_URL_BASE+'/router_ip_update'), {'net'=> net, 'gw' => gw })
+		postData = Net::HTTP.post_form(URI.parse(API_URL_BASE+'/router_ip_update'), {'api_key' => api_key , 'net'=> net, 'gw' => gw })
 	end
 end
 
@@ -322,7 +323,7 @@ def initialize_greyhole
 		f.puts "#!/bin/sh\n/usr/bin/greyhole --fsck --email-report --dont-walk-metadata-store > /dev/null;\n"
 		f.puts "/usr/bin/greyhole --getuid > /tmp/greyhole.stats;\n"
 		f.puts "/usr/bin/greyhole --stats --json >> /tmp/greyhole.stats;\n"
-		f.puts "curl -s --data @/tmp/greyhole.stats https://api.amahi.org/api2/greyhole > /dev/null;\n"
+		f.puts "curl -s --data @/tmp/greyhole.stats #{API_URL_BASE}/greyhole > /dev/null;\n"
 	end
 end
 
@@ -557,7 +558,7 @@ def check_install_code(inst_code)
 	os = URI.escape(get_os_version)
 	arch = URI.escape(get_arch)
 
-	url = "https://api.amahi.org/api2/install/#{inst_code}?os=#{os}&arch=#{arch}&ver=#{$version}"
+	url = "#{API_URL_BASE}/install/#{inst_code}?os=#{os}&arch=#{arch}&ver=#{$version}"
 
 	@system_configuration = nil
 	message "Retrieving install code ..."
