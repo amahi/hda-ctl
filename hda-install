@@ -39,7 +39,7 @@ DATABASE_PASSWORD = "AmahiHDARulez"
 DATABASE_MAIN_USER = "root"
 DATABASE_MAIN_PASSWORD = "hda"
 GREYHOLE_DATABASE = "greyhole"
-API_URL_BASE = "https://api.amahi.org"
+API_URL_BASE = "https://api.amahi.org/api2"
 
 # upstart conf file for an ubuntu system
 UPSTART_CONF = "/etc/init/%s.conf"
