@@ -187,9 +187,13 @@ def autoconfigure_network
 		puts "If this is incorrect, please report it, then run hda-change-gw after"
 		puts "installation is finished to set your gateway settings to the proper IP."
 		postData = Net::HTTP.post_form(URI.parse(API_URL_BASE+'/router_update'), {'api_key' => api_key , 'net'=> net, 'gw' => gw  })
+		puts "Post DATA:- "
+		puts postData
 	else
 		puts "WARNING: cannot autoconfigure the network!"
 		postData = Net::HTTP.post_form(URI.parse(API_URL_BASE+'/router_update'), {'api_key' => api_key , 'net'=> net, 'gw' => gw })
+		puts "Post DATA:- "
+		puts postData
 	end
 end
 
