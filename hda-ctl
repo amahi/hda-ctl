@@ -33,7 +33,6 @@ use POSIX qw(mkfifo);
 use IO::Handle;
 use IO::File;
 use Socket;
-use Try::Tiny;
 use Regexp::Common qw /net/;
 
 ################  dnsmasq settings   ##################
