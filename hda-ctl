@@ -33,6 +33,8 @@ use POSIX qw(mkfifo);
 use IO::Handle;
 use IO::File;
 use Socket;
+use Try::Tiny;
+use Regexp::Common qw /net/;
 
 ################  dnsmasq settings   ##################
 # Enable dnsmasq for DNS resolution and DHCP:
@@ -1425,6 +1427,40 @@ sub get_time_offset {
 	return $timeoffset;
 }
 
+sub get_current_ip {
+        my $dhclient_lease = '/var/lib/dhclient/dhclient.leases';
+        my $string_to_search = 'option routers';
+
+        #removing old dhclient config
+        system("rm -f /var/lib/NetworkManager/dhclient* /var/lib/dhclient/dhclient* ");
+        #killing dhclient
+        system("killall dhclient && sleep 5");
+        #Starting dhclient
+        system("dhclient");
+
+        #opening the file
+        open my $fh, '<', $dhclient_lease or die "Can't open file : $!";
+        #reading each line
+        while(my $line = <$fh>){
+              # Delete newline
+              chomp($line);
+              if (index($line, $string_to_search) != -1) {
+                                 #check line for IP ADDRESS
+                                 if ($line =~ /$RE{net}{IPv4}{-keep}/){
+                                                     close $fh or die "Couldn't Close File : $!";
+                                                     return $1;
+                                                  }
+
+              }
+        }
+        close $fh or die "Couldn't Close File : $!";
+        return "";
+}
+
+        
+          
+        
+
 sub set_platform_variables {
 	if ($platform eq "fedora") {
 		$named_user = "named";
@@ -1444,6 +1480,12 @@ sub set_platform_variables {
 sub main {
 
 	&usage() if (defined($opt_h));
+       
+        #another REBOOT required for GW change
+        if (-e '/etc/reboot_now_gw_change') {
+        system("rm /etc/reboot_now_gw_change");
+        system("reboot"); 
+        }  
 
         # first set platform and platform variables, these are needed by dump_mode
         $platform = &get_platform();
@@ -1454,6 +1496,8 @@ sub main {
 	&dump_mode() if (defined($opt_d));
 
 	&log ("starting hda-ctl v$version.");
+        #getting GW from DHCLIENT
+        my $gw_address = &get_current_ip();
 
 	&basic_checks ();
 
@@ -1469,8 +1513,16 @@ sub main {
 	&restart_dnsmasq () if $dnsmasq_in_use;
 
 	&generate_files ();
-
-	&db_disconnect ();
+       
+        #if DHCLIENT GW not equal to SQL gateway, change it to GW 
+        if($gw_address && $gw_address ne "$settings{'net'}.$settings{'gateway'}" ) {
+        system("hda-change-gw $gw_address");
+        #for doing another reboot  
+        system("touch /etc/reboot_now_gw_change");
+        system("reboot");       
+        }
+        
+        &db_disconnect ();
 
 	&do_start_action();
 
