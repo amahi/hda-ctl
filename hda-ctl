@@ -1456,10 +1456,18 @@ sub get_current_ip {
         return "";
 }
 
-        
-          
-        
-
+sub update_router_ip {
+        my $api_key = $settings{'api-key'};
+        my $net = $settings{'net'};
+        my $gateway = $settings{'gateway'};
+        my $ua = LWP::UserAgent->new;
+        my $api_url = "https://api.amahi.org/api2/router_update";
+        my $response = $ua->post( $api_url, ['api_key' => $api_key , 'net'=> $net, 'gw' => $gateway ] );
+        if (!$response->is_success) {
+                     &log("amahi.org router ip update failed with '$response->status_line'");
+        }
+ 
+}
 sub set_platform_variables {
 	if ($platform eq "fedora") {
 		$named_user = "named";
@@ -1479,24 +1487,22 @@ sub set_platform_variables {
 sub main {
 
 	&usage() if (defined($opt_h));
-       
-        #another REBOOT required for GW change
-        if (-e '/etc/reboot_now_gw_change') {
-        system("rm /etc/reboot_now_gw_change");
-        system("reboot"); 
-        }  
 
         # first set platform and platform variables, these are needed by dump_mode
         $platform = &get_platform();
         &log ("running on platform: $platform");
         &set_platform_variables();
 
+        #another REBOOT required for GW change, if GW got changed
+        if (-e '/etc/reboot_now_gw_change') {
+        system("rm /etc/reboot_now_gw_change");
+        system("reboot"); 
+        }     
+
 	# dump mode exits after it's done
 	&dump_mode() if (defined($opt_d));
 
 	&log ("starting hda-ctl v$version.");
-        #getting GW from DHCLIENT
-        my $gw_address = &get_current_ip();
 
 	&basic_checks ();
 
@@ -1507,17 +1513,27 @@ sub main {
 	# every reboot
 	&db_connect ();
 
-	&restart_named () unless ($use_dnsmasq_dns);
+        &restart_named () unless ($use_dnsmasq_dns);
 	&restart_dhcpd () unless ($use_dnsmasq_dhcp);
 	&restart_dnsmasq () if $dnsmasq_in_use;
 
 	&generate_files ();
-       
+
+        #getting GW from DHCLIENT
+        my $gw_address = &get_current_ip();
+
+        #update router IP in amahi.org after 2 reboots
+        if (-e '/etc/amahi_org_update') {
+        system("rm /etc/amahi_org_update");
+        &update_router_ip();
+        } 
+
         #if DHCLIENT GW not equal to SQL gateway, change it to GW 
-        if($gw_address && $gw_address ne "$settings{'net'}.$settings{'gateway'}" ) {
-        system("hda-change-gw $gw_address");
-        #for doing another reboot  
-        system("touch /etc/reboot_now_gw_change");
+        if($gw_address && $gw_address ne "$settings{'net'}.$settings{'gateway'}") {
+        system("hda-change-gw $gw_address");  
+        system("sleep 3");
+        #for doing another reboot and then updating router IP to amahi.org
+        system("touch /etc/reboot_now_gw_change /etc/amahi_org_update");
         system("reboot");       
         }
         
