@@ -718,7 +718,7 @@ def do_install_rpms
 
 	rpms = []
 	rpms << "yum-plugin-fastestmirror"
-	rpms << "mariadb-server perl-libwww-perl perl-LWP-Protocol-https dnsmasq"
+	rpms << "mariadb-server perl-libwww-perl perl-LWP-Protocol-https perl-Regexp-Common dnsmasq"
 	rpms << "php dhclient monit perl-Authen-PAM"
 	rpms << "hddtemp ruby-augeas"
 	rpms << "samba httpd cadaver patch sudo wol bc"
@@ -762,7 +762,7 @@ def do_install_debs
 	pkgs << "sysvinit-utils network-manager libboost-all-dev isc-dhcp-client"
 	pkgs << "libapache2-mod-passenger libapache2-mod-ruby"
 	pkgs << "libmagickcore-dev libmagickwand-dev libfcgi-dev"
-	pkgs << "libauthen-pam-perl libdbi-perl libwww-perl sudo"
+	pkgs << "libauthen-pam-perl libdbi-perl libwww-perl libregexp-common-perl sudo"
 	pkgs << "greyhole pmount ntpdate bc ruby-dbus"
 
 	# TODO: decide if already installed packaged are eliminated first
