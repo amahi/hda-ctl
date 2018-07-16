@@ -39,6 +39,7 @@ DATABASE_PASSWORD = "AmahiHDARulez"
 DATABASE_MAIN_USER = "root"
 DATABASE_MAIN_PASSWORD = "hda"
 GREYHOLE_DATABASE = "greyhole"
+API_URL_BASE = "https://api.amahi.org/api2"
 
 # upstart conf file for an ubuntu system
 UPSTART_CONF = "/etc/init/%s.conf"
@@ -172,18 +173,27 @@ end
 # Write the network information to the database
 def autoconfigure_network
 	net, gw, device = autodetect_network
+	api_key = @settings['api-key']
 	if net and gw
-		if @database
-			sth = @database.query("UPDATE #{DATABASE_NAME}.settings SET value = '#{net}' WHERE settings.name = 'net' LIMIT 1 ;")
-			sth = @database.query("UPDATE #{DATABASE_NAME}.settings SET value = '#{gw}' WHERE settings.name = 'gateway' LIMIT 1 ;")
-		end
 		# set the device here from the existing setup!
 		@network_device = device
+		if net != @settings['net'] || gw != @settings['gateway']
+			sth = @database.query("UPDATE #{DATABASE_NAME}.settings SET value = '#{net}' WHERE settings.name = 'net' LIMIT 1 ;")
+			sth = @database.query("UPDATE #{DATABASE_NAME}.settings SET value = '#{gw}' WHERE settings.name = 'gateway' LIMIT 1 ;")
+                        # load db settings
+	                get_db_settings
+		end
 		puts "Installer automatically determined that your router/gateway IP address is: #{net}.#{gw}, over #{device}"
 		puts "If this is incorrect, please report it, then run hda-change-gw after"
 		puts "installation is finished to set your gateway settings to the proper IP."
+		postData = Net::HTTP.post_form(URI.parse(API_URL_BASE+'/router_update'), {'api_key' => api_key , 'net'=> net, 'gw' => gw  })
+		puts "Post DATA:- "
+		puts postData
 	else
 		puts "WARNING: cannot autoconfigure the network!"
+		postData = Net::HTTP.post_form(URI.parse(API_URL_BASE+'/router_update'), {'api_key' => api_key , 'net'=> net, 'gw' => gw })
+		puts "Post DATA:- "
+		puts postData
 	end
 end
 
@@ -317,7 +327,7 @@ def initialize_greyhole
 		f.puts "#!/bin/sh\n/usr/bin/greyhole --fsck --email-report --dont-walk-metadata-store > /dev/null;\n"
 		f.puts "/usr/bin/greyhole --getuid > /tmp/greyhole.stats;\n"
 		f.puts "/usr/bin/greyhole --stats --json >> /tmp/greyhole.stats;\n"
-		f.puts "curl -s --data @/tmp/greyhole.stats https://api.amahi.org/api2/greyhole > /dev/null;\n"
+		f.puts "curl -s --data @/tmp/greyhole.stats #{API_URL_BASE}/greyhole > /dev/null;\n"
 	end
 end
 
@@ -552,7 +562,7 @@ def check_install_code(inst_code)
 	os = URI.escape(get_os_version)
 	arch = URI.escape(get_arch)
 
-	url = "https://api.amahi.org/api2/install/#{inst_code}?os=#{os}&arch=#{arch}&ver=#{$version}"
+	url = "#{API_URL_BASE}/install/#{inst_code}?os=#{os}&arch=#{arch}&ver=#{$version}"
 
 	@system_configuration = nil
 	message "Retrieving install code ..."
@@ -708,7 +718,7 @@ def do_install_rpms
 
 	rpms = []
 	rpms << "yum-plugin-fastestmirror"
-	rpms << "mariadb-server perl-libwww-perl perl-LWP-Protocol-https dnsmasq"
+	rpms << "mariadb-server perl-libwww-perl perl-LWP-Protocol-https perl-Regexp-Common dnsmasq"
 	rpms << "php dhclient monit perl-Authen-PAM"
 	rpms << "hddtemp ruby-augeas"
 	rpms << "samba httpd cadaver patch sudo wol bc"
@@ -752,7 +762,7 @@ def do_install_debs
 	pkgs << "sysvinit-utils network-manager libboost-all-dev isc-dhcp-client"
 	pkgs << "libapache2-mod-passenger libapache2-mod-ruby"
 	pkgs << "libmagickcore-dev libmagickwand-dev libfcgi-dev"
-	pkgs << "libauthen-pam-perl libdbi-perl libwww-perl sudo"
+	pkgs << "libauthen-pam-perl libdbi-perl libwww-perl libregexp-common-perl sudo"
 	pkgs << "greyhole pmount ntpdate bc ruby-dbus"
 
 	# TODO: decide if already installed packaged are eliminated first
@@ -861,10 +871,10 @@ def do_full_install()
 
 	message "Initializing settings"
 
-	# load db settings
+        # load db settings
 	get_db_settings
 
-	message "Configuring network"
+        message "Configuring network"
 	autoconfigure_network
 
 	message "Setting up watchdog monitor"
