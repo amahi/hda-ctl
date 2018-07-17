@@ -1496,6 +1496,8 @@ sub main {
         #another REBOOT required for GW change, if GW got changed
         if (-e '/etc/reboot_now_gw_change') {
         system("rm /etc/reboot_now_gw_change");
+	#for update to amahi.org later
+        system("touch /etc/amahi_org_update");
         system("reboot"); 
         }     
 
