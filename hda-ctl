@@ -33,6 +33,7 @@ use POSIX qw(mkfifo);
 use IO::Handle;
 use IO::File;
 use Socket;
+use Regexp::Common qw /net/;
 
 ################  dnsmasq settings   ##################
 # Enable dnsmasq for DNS resolution and DHCP:
@@ -1120,7 +1121,11 @@ sub do_action {
 	my $os = &get_os_version();
 	my $arch = &get_arch();
 	my $url = "https://api-ddns.amahi.org/api2/$action?api_key=$api_key&os=$os&arch=$arch&ver=$version";
-	my $content = get($url);
+	my $ua = LWP::UserAgent->new;
+        my $response = $ua->put($url);
+        if (!$response->is_success) {
+                &log("amahi.org action '$action' failed with '$response->status_line'");
+        }
 }
 
 sub do_periodic_update {
@@ -1421,6 +1426,48 @@ sub get_time_offset {
 	return $timeoffset;
 }
 
+sub get_current_ip {
+        my $dhclient_lease = '/var/lib/dhclient/dhclient.leases';
+        my $string_to_search = 'option routers';
+
+        #removing old dhclient config
+        system("rm -f /var/lib/NetworkManager/dhclient* /var/lib/dhclient/dhclient* ");
+        #killing dhclient
+        system("killall dhclient && sleep 5");
+        #Starting dhclient
+        system("dhclient");
+
+        #opening the file
+        open my $fh, '<', $dhclient_lease or die "Can't open file : $!";
+        #reading each line
+        while(my $line = <$fh>){
+              # Delete newline
+              chomp($line);
+              if (index($line, $string_to_search) != -1) {
+                                 #check line for IP ADDRESS
+                                 if ($line =~ /$RE{net}{IPv4}{-keep}/){
+                                                     close $fh or die "Couldn't Close File : $!";
+                                                     return $1;
+                                                  }
+
+              }
+        }
+        close $fh or die "Couldn't Close File : $!";
+        return "";
+}
+
+sub update_router_ip {
+        my $api_key = $settings{'api-key'};
+        my $net = $settings{'net'};
+        my $gateway = $settings{'gateway'};
+        my $ua = LWP::UserAgent->new;
+        my $api_url = "https://api.amahi.org/api2/router_update";
+        my $response = $ua->post( $api_url, ['api_key' => $api_key , 'net'=> $net, 'gw' => $gateway ] );
+        if (!$response->is_success) {
+                     &log("amahi.org router ip update failed with '$response->status_line'");
+        }
+ 
+}
 sub set_platform_variables {
 	if ($platform eq "fedora") {
 		$named_user = "named";
@@ -1446,6 +1493,14 @@ sub main {
         &log ("running on platform: $platform");
         &set_platform_variables();
 
+        #another REBOOT required for GW change, if GW got changed
+        if (-e '/etc/reboot_now_gw_change') {
+        system("rm /etc/reboot_now_gw_change");
+	#for update to amahi.org later
+        system("touch /etc/amahi_org_update");
+        system("reboot"); 
+        }     
+
 	# dump mode exits after it's done
 	&dump_mode() if (defined($opt_d));
 
@@ -1460,13 +1515,31 @@ sub main {
 	# every reboot
 	&db_connect ();
 
-	&restart_named () unless ($use_dnsmasq_dns);
+        &restart_named () unless ($use_dnsmasq_dns);
 	&restart_dhcpd () unless ($use_dnsmasq_dhcp);
 	&restart_dnsmasq () if $dnsmasq_in_use;
 
 	&generate_files ();
 
-	&db_disconnect ();
+        #getting GW from DHCLIENT
+        my $gw_address = &get_current_ip();
+
+        #update router IP in amahi.org after 2 reboots
+        if (-e '/etc/amahi_org_update') {
+        system("rm /etc/amahi_org_update");
+        &update_router_ip();
+        } 
+
+        #if DHCLIENT GW not equal to SQL gateway, change it to GW 
+        if($gw_address && $gw_address ne "$settings{'net'}.$settings{'gateway'}") {
+        system("hda-change-gw $gw_address");  
+        system("sleep 3");
+        #for doing another reboot and then updating router IP to amahi.org
+        system("touch /etc/reboot_now_gw_change /etc/amahi_org_update");
+        system("reboot");       
+        }
+        
+        &db_disconnect ();
 
 	&do_start_action();
 
