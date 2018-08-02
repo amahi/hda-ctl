@@ -27,7 +27,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "10.6.4"
+$version = "10.6.6"
 
 # default network device
 @network_device = "eth0"
@@ -447,7 +447,7 @@ def start_all_services
 
 	# NOTE: monit must be the last one, to prevent race conditions
 	services_start = [ 'hda-ctl', HTTPD_SERVERNAME, 'dnsmasq', NETWORK_SERVERNAME,
-	MYSQL_SERVERNAME, SMB_SERVERNAME, NMB_SERVERNAME, 'monit', 'hddtemp', 'docker']
+	MYSQL_SERVERNAME, SMB_SERVERNAME, NMB_SERVERNAME, 'monit', 'hddtemp', 'docker', 'memcached']
 
 	if fedora? or centos?
 		services_stop = [ 'gpm', 'hplip', 'isdn', 'kudzu', 'sendmail',
@@ -720,7 +720,7 @@ def do_install_rpms
 	rpms << "yum-plugin-fastestmirror"
 	rpms << "mariadb-server perl-libwww-perl perl-LWP-Protocol-https perl-Regexp-Common dnsmasq"
 	rpms << "php dhclient monit perl-Authen-PAM"
-	rpms << "hddtemp ruby-augeas"
+	rpms << "hddtemp ruby-augeas memcached"
 	rpms << "samba httpd cadaver patch sudo wol bc"
 	rpms << "fpaste perl-DBI rsync wget curl cronie pmount"
 	rpms << "v8"
