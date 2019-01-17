@@ -916,6 +916,7 @@ sub print_dnsmasq_dhcp_conf {
 		} else {
 			printf $dnsmasq "dhcp-option=option:dns-server,%s,%s\n", $dns1, $dns1;
 		}
+		printf $dnsmasq "dhcp-option=option:domain-search,%s\n", $domain;
 
 		# FEATURE: do not mess with tftp for now
 		# printf $dnsmasq "dhcp-option=option:tftp-server,\"%s\"\n", $self;
