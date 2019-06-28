@@ -144,6 +144,7 @@ my $file_dnsmasq_common = "amahi-common.conf";
 my $file_dnsmasq_dns = "amahi-dns.conf";
 my $file_dnsmasq_dhcp = "amahi-dhcp.conf";
 my $file_dnsmasq_ipv6 = "amahi-ipv6.conf";
+my $file_setupVars = "setupVars.conf";
 
 my $ifcfg_idx = 1;
 my $dump_mode = 0;
@@ -930,6 +931,21 @@ sub print_dnsmasq_dhcp_conf {
 	&mv ($file_dnsmasq_dhcp, "/etc/dnsmasq.d/");
 }
 
+sub enable_pihole_dhcp {
+	my $domain = $settings{'domain'};
+	my $net = $settings{'net'};
+	my $dhcp_lease_time = $settings{'dhcp_lease_time'} || $default_dhcp_lease;
+	my $lease_time_hrs = int(($dhcp_lease_time/3600)+0.5);
+	my $gw = $net . "." . $settings{'gateway'};
+	my $self = $net . "." . $settings{'self-address'};
+	my $dyn_lo = $net . "." . $settings{'dyn_lo'};
+	my $dyn_hi = $net . "." . $settings{'dyn_hi'};
+	if(-e '/etc/dnsmasq.d/01-pihole.conf'){
+		#syntax sudo pihole -a enabledhcp from_ip to_ip router_ip lease_time_in_hrs domain enable_ipv6 enable_rapid_commit_dhcp
+		system("sudo pihole -a enabledhcp $dyn_lo $dyn_hi $gw $lease_time_hrs $domain true true");
+	}
+}
+
 sub print_hosts_dnsmasq {
 	my $file = shift;
 
@@ -1009,6 +1025,38 @@ sub print_dnsmasq_ipv6_conf {
 	&mv ($file_dnsmasq_ipv6, "/etc/dnsmasq.d/");
 }
 
+sub netmask_to_prefix () {
+    my $netmask_size = $settings{'netmask_size'};
+    my $prefix = `ipcalc -p 1.1.1.1 $netmask_size`;
+    $prefix =~ s/\D//g;
+    return ($prefix);
+}
+
+sub print_setupVars {
+    my $domain = $settings{'domain'};
+	my $net = $settings{'net'};
+	my $gw = $net . "." . $settings{'gateway'};
+	my $self = $net . "." . $settings{'self-address'};
+	my $dns1 = $self;
+	my ($extdns1, $extdns2) = &resolve_dns_ips();
+    my $prefix = &netmask_to_prefix();
+	open(my $generate_settings, ">", $file_setupVars);
+	printf $generate_settings "PIHOLE_INTERFACE=$device\n";
+	printf $generate_settings "IPV4_ADDRESS=$self/$prefix\n";
+    printf $generate_settings "IPV6_ADDRESS=\n";
+    printf $generate_settings "PIHOLE_DNS_1=$extdns1\n";
+    printf $generate_settings "PIHOLE_DNS_2=$extdns2\n";
+    printf $generate_settings "QUERY_LOGGING=true\n";
+    printf $generate_settings "INSTALL_WEB_SERVER=false\n";
+    printf $generate_settings "INSTALL_WEB_INTERFACE=true\n";
+    printf $generate_settings "LIGHTTPD_ENABLED=false\n";
+    printf $generate_settings "BLOCKING_ENABLED=true\n";
+    printf $generate_settings "WEBPASSWORD=4842d773f9430b61ee2994ccde8ca60b1a4495c941594c242aeeb3767daca3d4\n";
+	close $generate_settings;
+
+	&mv ($file_setupVars, "/etc/pihole/");
+}
+
 sub generate_dhcp_settings {
 	if ($use_dnsmasq_dhcp) {
 		&print_dnsmasq_dhcp_conf();
@@ -1031,8 +1079,20 @@ sub generate_dns_settings {
 sub generate_files {
 
 	&get_db_settings();
-	&print_dnsmasq_common_conf() if ($dnsmasq_in_use);
-	&generate_dhcp_settings();
+	#if pihole directory is present generate setupVars.conf required by pihole to work properly
+	if(-d "/etc/pihole"){
+		&print_setupVars();
+		#during pihole install if hda-ctl restarts it should not generate pihole_dhcp file. Only when pihole install is complete generate these files. 
+		if(-e "/etc/dnsmasq.d/01-pihole.conf"){
+			&enable_pihole_dhcp();
+		}else{
+			&print_dnsmasq_common_conf() if ($dnsmasq_in_use);
+			&generate_dhcp_settings();
+		}
+	}else{
+		&print_dnsmasq_common_conf() if ($dnsmasq_in_use);
+		&generate_dhcp_settings();
+	}
 	&generate_dns_settings();
 	&change_network_manager_settings ();
 	&print_resolver ();
@@ -1222,6 +1282,25 @@ sub restart_dnsmasq {
 	}
 }
 
+sub restart_pihole {
+	my $cmd = "";
+	if (&should_run_at_boot("pihole-FTL")) {
+		if ($platform eq "fedora") {
+			$cmd = "systemctl restart pihole-FTL.service >& /dev/null";
+		} else {
+			$cmd = "service pihole-FTL restart >/dev/null 2>&1";
+		}
+
+		if (system($cmd)) {
+			&log ("cannot restart pihole");
+		} else {
+			&log ("pihole restarted successfully");
+		}
+	} else {
+		&log("pihole not enabled");
+	}
+}
+
 sub restart_network {
 
 	my $g = get("http://www.yahoo.com");
@@ -1291,10 +1370,15 @@ sub do_hup_action {
 	&log ("caught SIGHUP: executing programmed action.");
 
 	&db_connect();
-        &generate_files ();
+    &generate_files ();
 	&restart_named () unless $use_dnsmasq_dns;
 	&restart_dhcpd () unless $use_dnsmasq_dhcp;
-	&restart_dnsmasq () if $dnsmasq_in_use;
+	#if we could find this file means pihole is installed. pihole-FTL instead of dnsmasq should be used.
+	if(-e '/etc/dnsmasq.d/01-pihole.conf'){
+		&restart_pihole ();
+	}else{
+		&restart_dnsmasq () if $dnsmasq_in_use;
+	}
 	&db_disconnect ();
 	&log ("services restarted");
 }
@@ -1515,31 +1599,34 @@ sub main {
 	# every reboot
 	&db_connect ();
 
-        &restart_named () unless ($use_dnsmasq_dns);
+	&restart_named () unless ($use_dnsmasq_dns);
 	&restart_dhcpd () unless ($use_dnsmasq_dhcp);
-	&restart_dnsmasq () if $dnsmasq_in_use;
-
+	#if we could find this file means pihole is installed. pihole-FTL instead of dnsmasq should be used.
+	if(-e '/etc/dnsmasq.d/01-pihole.conf'){
+		&restart_pihole ();
+	}else{
+		&restart_dnsmasq () if $dnsmasq_in_use;
+	}
 	&generate_files ();
+    #getting GW from DHCLIENT
+    my $gw_address = &get_current_ip();
 
-        #getting GW from DHCLIENT
-        my $gw_address = &get_current_ip();
+    #update router IP in amahi.org after 2 reboots
+    if (-e '/etc/amahi_org_update') {
+    	system("rm /etc/amahi_org_update");
+    &update_router_ip();
+    } 
 
-        #update router IP in amahi.org after 2 reboots
-        if (-e '/etc/amahi_org_update') {
-        system("rm /etc/amahi_org_update");
-        &update_router_ip();
-        } 
-
-        #if DHCLIENT GW not equal to SQL gateway, change it to GW 
-        if($gw_address && $gw_address ne "$settings{'net'}.$settings{'gateway'}") {
+    #if DHCLIENT GW not equal to SQL gateway, change it to GW 
+    if($gw_address && $gw_address ne "$settings{'net'}.$settings{'gateway'}") {
         system("hda-change-gw $gw_address");  
         system("sleep 3");
         #for doing another reboot and then updating router IP to amahi.org
         system("touch /etc/reboot_now_gw_change /etc/amahi_org_update");
         system("reboot");       
-        }
+    }
         
-        &db_disconnect ();
+    &db_disconnect ();
 
 	&do_start_action();
 
