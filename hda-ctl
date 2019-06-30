@@ -917,33 +917,28 @@ sub print_dnsmasq_dhcp_conf {
 		} else {
 			printf $dnsmasq "dhcp-option=option:dns-server,%s,%s\n", $dns1, $dns1;
 		}
+		if ( -e "/etc/dnsmasq.d/01-pihole.conf") {
+			printf $dnsmasq "dhcp-leasefile=/etc/pihole/dhcp.leases\n";
+		}
 
 		# FEATURE: do not mess with tftp for now
 		# printf $dnsmasq "dhcp-option=option:tftp-server,\"%s\"\n", $self;
 		# printf $dnsmasq "dhcp-option=option:bootfile-name,\"pxelinux.0\"\n";
 
 		&print_static_dhcp_dnsmasq ($dnsmasq);
+		
+		#to display dhcp leases on dashboard
+		if ( -e "/etc/pihole/dhcp.leases") {
+			system ("rm /var/lib/dnsmasq/dnsmasq.leases");
+			system ("cp /etc/pihole/dhcp.leases /var/lib/dnsmasq/dnsmasq.leases");
+		}
+
 	} else {
 		printf $dnsmasq "# dnsmasq dns not enabled\n";
 	}
 	close $dnsmasq;
 
 	&mv ($file_dnsmasq_dhcp, "/etc/dnsmasq.d/");
-}
-
-sub enable_pihole_dhcp {
-	my $domain = $settings{'domain'};
-	my $net = $settings{'net'};
-	my $dhcp_lease_time = $settings{'dhcp_lease_time'} || $default_dhcp_lease;
-	my $lease_time_hrs = int(($dhcp_lease_time/3600)+0.5);
-	my $gw = $net . "." . $settings{'gateway'};
-	my $self = $net . "." . $settings{'self-address'};
-	my $dyn_lo = $net . "." . $settings{'dyn_lo'};
-	my $dyn_hi = $net . "." . $settings{'dyn_hi'};
-	if(-e '/etc/dnsmasq.d/01-pihole.conf'){
-		#syntax sudo pihole -a enabledhcp from_ip to_ip router_ip lease_time_in_hrs domain enable_ipv6 enable_rapid_commit_dhcp
-		system("sudo pihole -a enabledhcp $dyn_lo $dyn_hi $gw $lease_time_hrs $domain true true");
-	}
 }
 
 sub print_hosts_dnsmasq {
@@ -1077,22 +1072,13 @@ sub generate_dns_settings {
 }
 
 sub generate_files {
-
+	
 	&get_db_settings();
-	#if pihole directory is present generate setupVars.conf required by pihole to work properly
-	if(-d "/etc/pihole"){
+	if ( -d "/etc/pihole") {
 		&print_setupVars();
-		#during pihole install if hda-ctl restarts it should not generate pihole_dhcp file. Only when pihole install is complete generate these files. 
-		if(-e "/etc/dnsmasq.d/01-pihole.conf"){
-			&enable_pihole_dhcp();
-		}else{
-			&print_dnsmasq_common_conf() if ($dnsmasq_in_use);
-			&generate_dhcp_settings();
-		}
-	}else{
-		&print_dnsmasq_common_conf() if ($dnsmasq_in_use);
-		&generate_dhcp_settings();
 	}
+	&print_dnsmasq_common_conf() if ($dnsmasq_in_use);
+	&generate_dhcp_settings();
 	&generate_dns_settings();
 	&change_network_manager_settings ();
 	&print_resolver ();
@@ -1373,7 +1359,6 @@ sub do_hup_action {
     &generate_files ();
 	&restart_named () unless $use_dnsmasq_dns;
 	&restart_dhcpd () unless $use_dnsmasq_dhcp;
-	#if we could find this file means pihole is installed. pihole-FTL instead of dnsmasq should be used.
 	if(-e '/etc/dnsmasq.d/01-pihole.conf'){
 		&restart_pihole ();
 	}else{
@@ -1601,10 +1586,9 @@ sub main {
 
 	&restart_named () unless ($use_dnsmasq_dns);
 	&restart_dhcpd () unless ($use_dnsmasq_dhcp);
-	#if we could find this file means pihole is installed. pihole-FTL instead of dnsmasq should be used.
-	if(-e '/etc/dnsmasq.d/01-pihole.conf'){
+	if ( -e '/etc/dnsmasq.d/01-pihole.conf') {
 		&restart_pihole ();
-	}else{
+	} else {
 		&restart_dnsmasq () if $dnsmasq_in_use;
 	}
 	&generate_files ();
