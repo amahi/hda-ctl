@@ -1359,9 +1359,9 @@ sub do_hup_action {
     &generate_files ();
 	&restart_named () unless $use_dnsmasq_dns;
 	&restart_dhcpd () unless $use_dnsmasq_dhcp;
-	if(-e '/etc/dnsmasq.d/01-pihole.conf'){
+	if ( -e '/etc/dnsmasq.d/01-pihole.conf') {
 		&restart_pihole ();
-	}else{
+	} else {
 		&restart_dnsmasq () if $dnsmasq_in_use;
 	}
 	&db_disconnect ();
