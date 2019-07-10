@@ -917,21 +917,12 @@ sub print_dnsmasq_dhcp_conf {
 		} else {
 			printf $dnsmasq "dhcp-option=option:dns-server,%s,%s\n", $dns1, $dns1;
 		}
-		if ( -e "/etc/dnsmasq.d/01-pihole.conf") {
-			printf $dnsmasq "dhcp-leasefile=/etc/pihole/dhcp.leases\n";
-		}
 
 		# FEATURE: do not mess with tftp for now
 		# printf $dnsmasq "dhcp-option=option:tftp-server,\"%s\"\n", $self;
 		# printf $dnsmasq "dhcp-option=option:bootfile-name,\"pxelinux.0\"\n";
 
 		&print_static_dhcp_dnsmasq ($dnsmasq);
-		
-		#to display dhcp leases on dashboard
-		if ( -e "/etc/pihole/dhcp.leases") {
-			system ("rm /var/lib/dnsmasq/dnsmasq.leases");
-			system ("cp /etc/pihole/dhcp.leases /var/lib/dnsmasq/dnsmasq.leases");
-		}
 
 	} else {
 		printf $dnsmasq "# dnsmasq dns not enabled\n";
@@ -1359,9 +1350,9 @@ sub do_hup_action {
     &generate_files ();
 	&restart_named () unless $use_dnsmasq_dns;
 	&restart_dhcpd () unless $use_dnsmasq_dhcp;
-	if ( -e '/etc/dnsmasq.d/01-pihole.conf') {
+	if(-e '/etc/dnsmasq.d/01-pihole.conf'){
 		&restart_pihole ();
-	} else {
+	}else{
 		&restart_dnsmasq () if $dnsmasq_in_use;
 	}
 	&db_disconnect ();
