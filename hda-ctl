@@ -1499,6 +1499,7 @@ sub main {
         system("rm /etc/reboot_now_gw_change");
 	#for update to amahi.org later
         system("touch /etc/amahi_org_update");
+        &log("Last Reboot to change gateway. Check line 1496 in hda-ctl");
         system("reboot"); 
         }     
 
@@ -1537,6 +1538,7 @@ sub main {
         system("sleep 3");
         #for doing another reboot and then updating router IP to amahi.org
         system("touch /etc/reboot_now_gw_change /etc/amahi_org_update");
+        &log("First reboot to change Gateway and update platform variables. Check Line 1535");
         system("reboot");       
         }
         
