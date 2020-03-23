@@ -1494,14 +1494,6 @@ sub main {
         &log ("running on platform: $platform");
         &set_platform_variables();
 
-        #another REBOOT required for GW change, if GW got changed
-        if (-e '/etc/reboot_now_gw_change') {
-        system("rm /etc/reboot_now_gw_change");
-	#for update to amahi.org later
-        system("touch /etc/amahi_org_update");
-        system("reboot"); 
-        }     
-
 	# dump mode exits after it's done
 	&dump_mode() if (defined($opt_d));
 
@@ -1525,20 +1517,7 @@ sub main {
         #getting GW from DHCLIENT
         my $gw_address = &get_current_ip();
 
-        #update router IP in amahi.org after 2 reboots
-        if (-e '/etc/amahi_org_update') {
-        system("rm /etc/amahi_org_update");
-        &update_router_ip();
-        } 
-
-        #if DHCLIENT GW not equal to SQL gateway, change it to GW 
-        if($gw_address && $gw_address ne "$settings{'net'}.$settings{'gateway'}") {
-        system("hda-change-gw $gw_address");  
-        system("sleep 3");
-        #for doing another reboot and then updating router IP to amahi.org
-        system("touch /etc/reboot_now_gw_change /etc/amahi_org_update");
-        system("reboot");       
-        }
+    
         
         &db_disconnect ();
 
