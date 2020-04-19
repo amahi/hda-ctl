@@ -88,7 +88,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "11.0.0";
+my $version = "11.1.0";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -1427,36 +1427,6 @@ sub get_time_offset {
 	return $timeoffset;
 }
 
-sub get_current_ip {
-        my $dhclient_lease = '/var/lib/dhclient/dhclient.leases';
-        my $string_to_search = 'option routers';
-
-        #removing old dhclient config
-        system("rm -f /var/lib/NetworkManager/dhclient* /var/lib/dhclient/dhclient* ");
-        #killing dhclient
-        system("killall dhclient && sleep 5");
-        #Starting dhclient
-        system("dhclient");
-
-        #opening the file
-        open my $fh, '<', $dhclient_lease or die "Can't open file : $!";
-        #reading each line
-        while(my $line = <$fh>){
-              # Delete newline
-              chomp($line);
-              if (index($line, $string_to_search) != -1) {
-                                 #check line for IP ADDRESS
-                                 if ($line =~ /$RE{net}{IPv4}{-keep}/){
-                                                     close $fh or die "Couldn't Close File : $!";
-                                                     return $1;
-                                                  }
-
-              }
-        }
-        close $fh or die "Couldn't Close File : $!";
-        return "";
-}
-
 sub update_router_ip {
         my $api_key = $settings{'api-key'};
         my $net = $settings{'net'};
@@ -1514,11 +1484,6 @@ sub main {
 
 	&generate_files ();
 
-        #getting GW from DHCLIENT
-        my $gw_address = &get_current_ip();
-
-    
-        
         &db_disconnect ();
 
 	&do_start_action();
