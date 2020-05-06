@@ -1,7 +1,7 @@
 %global rubyrelease 2.2.3
 
 Name:           hda-ctl
-Version: 11.1.0
+Version: 11.7.0
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
@@ -11,9 +11,9 @@ License:        GPL
 Source:         %{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-Requires: hda-platform >= 10.0.0
-Requires: bash >= 4.2.48-2
-Requires: dnsmasq, sudo >= 1.7.2
+Requires: hda-platform >= 11.7.0
+Requires: bash >= 5.0
+Requires: dnsmasq, sudo >= 1.9.0
 Requires: mariadb-server samba httpd
 Requires: ruby(release) >= %{rubyrelease}
 Requires: monit perl-Authen-PAM fpaste
@@ -47,7 +47,6 @@ rm -rf %{buildroot}
 %{__mkdir} -p %{buildroot}%{_initrddir}
 %{__mkdir} -p %{buildroot}%{_sysconfdir}/sysconfig
 %{__mkdir} -p %{buildroot}/var/cache
-%{__mkdir} -p %{buildroot}%{_sysconfdir}/httpd/conf.d
 %{__mkdir} -p %{buildroot}%{_sysconfdir}/sudoers.d
 %{__mkdir} -p %{buildroot}/var/hda
 %{__mkdir} -p %{buildroot}/usr/share/hda-ctl
@@ -64,7 +63,7 @@ rm -rf %{buildroot}
 %{__install} -m 0440 -p hda-privs %{buildroot}%{_sysconfdir}/sudoers.d/amahi
 %{__install} -D -m 0644 -p hda-ctl.service %{buildroot}%{_unitdir}/hda-ctl.service
 %{__install} -D -m 0644 -p amahi-installer.service %{buildroot}%{_unitdir}/amahi-installer.service
-%{__install} -p hda-ctl.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/hda-ctl
+%{__install} -p -m 0644 hda-ctl.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/hda-ctl
 %{__install} -p amahi-hda %{buildroot}/usr/share/hda-ctl/amahi-hda
 %{__install} -p -m 0755 mount_shares_locally %{buildroot}/usr/share/hda-ctl/
 %{__install} -m 0644 -p hda-ctl.logrotate %{buildroot}%{_sysconfdir}/logrotate.d/hda-ctl
@@ -80,9 +79,6 @@ rm -rf %{buildroot}
 # periodic updates
 %{__mkdir} -p %{buildroot}%{_sysconfdir}/cron.hourly
 %{__install} -m 700 -p hda-update %{buildroot}%{_sysconfdir}/cron.hourly
-
-# base initialitation
-%{__cp} -a httpd %{buildroot}/usr/share/hda-ctl/
 
 # file server non-destructive initialization for later
 %{__cp} -a samba %{buildroot}/usr/share/hda-ctl/

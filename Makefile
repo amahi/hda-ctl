@@ -1,4 +1,4 @@
-VERSION=11.1.0
+VERSION=11.7.0
 RPMBUILDDIR=$(HOME)/rpmbuild
 
 # SIGN=--sign
@@ -11,7 +11,7 @@ dist: hda-ctl-hup
 	(mkdir -p release && cd release && mkdir -p hda-ctl-$(VERSION))
 	rsync -Ca hda-ctl hda-ctl-hup.c hda-ctl.spec hda-ctl.initscript hda-install \
 	        debian hda-install-gem hda-ctl.service hda-ctl.logrotate \
-		amahi-hda httpd samba desktop-icons hda-ctl.sysconfig \
+		amahi-hda samba desktop-icons hda-ctl.sysconfig \
 		hda-settings hda-register-apps hda-install-file hda-alias \
 		hda-update hda-change-gw hda-change-dns amahi-installer.service \
 		web-installer amahi-installer hda-php-zone-change hda-fix-sudoers \
@@ -44,10 +44,10 @@ install: rpm
 	(cd release && sudo rpm -Uvh hda-ctl-$(VERSION)-*.rpm)
 
 install-on-system:
-	sudo dnf -y install bc bind-utils cadaver fpaste httpd mariadb-server monit \
+	sudo dnf -y install bc bind-utils cadaver fpaste mariadb-server monit \
 		"perl(DBI)" "perl(LWP::Protocol::https)" "perl(LWP::Simple)" "perl(URI::Escape)" \
 		perl-Authen-PAM perl-LWP-Protocol-https perl-URI perl-libwww-perl \
 		php php-mysqlnd pmount ruby-augeas "rubygem(ruby-dbus)" rubygem-mysql2 samba \
-		wget hddtemp httpd mariadb-server mlocate mod_passenger "perl(DBI)" pmount \
+		wget hddtemp mariadb-server mlocate mod_passenger "perl(DBI)" pmount \
 		rubygem-passenger rubygem-passenger-native rubygem-rake wol \
 		php-gd php-mbstring php-mcrypt php-xml dnsmasq psmisc rubygem-rake v8 python rubygem-json
