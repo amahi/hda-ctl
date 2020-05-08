@@ -20,6 +20,7 @@
 
 require 'optparse'
 require 'uri'
+require 'cgi'
 require 'open-uri'
 require 'net/http'
 require 'mysql2'
@@ -27,7 +28,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "11.7.0"
+$version = "11.7.5"
 
 # default network device
 @network_device = "eth0"
@@ -38,7 +39,6 @@ DATABASE_USER = "amahihda"
 DATABASE_PASSWORD = "AmahiHDARulez"
 DATABASE_MAIN_USER = "root"
 DATABASE_MAIN_PASSWORD = "hda"
-GREYHOLE_DATABASE = "greyhole"
 API_URL_BASE = "https://api.amahi.org/api2"
 
 # upstart conf file for an ubuntu system
@@ -250,13 +250,10 @@ def clone_perm(i, o)
 	File.chmod p, o
 end
 
-def initialize_mysql
+def initialize_mariadb
 	message "Initializing MariaDB"
 
-	do_system_silent "rm /etc/my.cnf.d/cracklib_password_check.cnf"
-
 	# configure mysql daemon - fail safe
-	do_system_silent "echo \"UNINSTALL PLUGIN cracklib_password_check;\" | mysql -u #{DATABASE_MAIN_USER}"
 	do_system_silent "echo \"GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' IDENTIFIED BY '#{DATABASE_MAIN_PASSWORD}' WITH GRANT OPTION;\" | mysql -u #{DATABASE_MAIN_USER}"
 
 	message "Setting up Amahi Dashboard DB user"
@@ -296,39 +293,6 @@ def substitute_dir(dir_in, dir_out)
 	end
 
 	clone_perm dir_in, dir_out
-end
-
-# create a common user/db/password for the greyhole app
-def initialize_greyhole
-	message "***************        TBD: Initialize storage pooling ... *******************"
-	return
-	message "Initializing Storage Pooling ..."
-	db = open "| mysql --user #{DATABASE_MAIN_USER} -p#{DATABASE_MAIN_PASSWORD} 2>&1", "r+"
-	dbname = user = user_password = GREYHOLE_DATABASE
-	host = "localhost"
-	if db
-		db.puts "drop database if exists `#{dbname}`;"
-		db.puts "create database `#{dbname}`;"
-		db.puts "create user '#{user}'@'#{host}' IDENTIFIED BY '#{user_password}';"
-		db.puts "grant all privileges on `#{dbname}`.* to '#{user}'@'#{host}';"
-		db.puts "use greyhole;"
-		open("/usr/share/greyhole/schema-mysql.sql") do |f|
-			until (f.eof) do
-				db.puts f.readline
-			end
-		end
-		db.puts "quit"
-		db.flush
-		db.close
-	else
-		raise "cannot create greyole db!"
-	end
-	open("/etc/cron.weekly/greyhole", "w") do |f|
-		f.puts "#!/bin/sh\n/usr/bin/greyhole --fsck --email-report --dont-walk-metadata-store > /dev/null;\n"
-		f.puts "/usr/bin/greyhole --getuid > /tmp/greyhole.stats;\n"
-		f.puts "/usr/bin/greyhole --stats --json >> /tmp/greyhole.stats;\n"
-		f.puts "curl -s --data @/tmp/greyhole.stats #{API_URL_BASE}/greyhole > /dev/null;\n"
-	end
 end
 
 def substitute(file_in, file_out)
@@ -431,7 +395,6 @@ end
 
 def do_httpd
 	puts "Installing httpd ... "
-	substitute "/usr/share/hda-ctl/httpd/", "/etc/httpd/conf.d/"
 	unless in_file?(HTTPD_ENVFILE, 'umask')
 		File.open(HTTPD_ENVFILE, "a+") { |file| file.puts "\numask 002\n" }
 	end
@@ -446,7 +409,7 @@ def start_all_services
 	puts "Starting services ... "
 
 	# NOTE: monit must be the last one, to prevent race conditions
-	services_start = [ 'hda-ctl', HTTPD_SERVERNAME, 'dnsmasq', NETWORK_SERVERNAME,
+	services_start = [ 'hda-ctl', 'hda-platform', HTTPD_SERVERNAME, 'dnsmasq',
 	MYSQL_SERVERNAME, SMB_SERVERNAME, NMB_SERVERNAME, 'monit', 'hddtemp', 'docker', 'memcached']
 
 	if fedora? or centos?
@@ -559,8 +522,8 @@ def get_arch
 end
 
 def check_install_code(inst_code)
-	os = URI.escape(get_os_version)
-	arch = URI.escape(get_arch)
+	os = CGI.escape(get_os_version)
+	arch = CGI.escape(get_arch)
 
 	url = "#{API_URL_BASE}/install/#{inst_code}?os=#{os}&arch=#{arch}&ver=#{$version}"
 
@@ -571,8 +534,7 @@ def check_install_code(inst_code)
 	# get the settings remotely and update it on client
 	(1..3).each do
 		begin
-			@system_configuration = open(url, "User-Agent" => "ruby/#{RUBY_VERSION}").read
-                       
+                        @system_configuration = URI.open(url, "User-Agent" => "ruby/#{RUBY_VERSION}").read
 		rescue
 			sleep time
 			time += 1
@@ -717,7 +679,6 @@ def do_install_rpms
 	installed = IO.popen('rpm -qa') { |f| f.readlines }
 
 	rpms = []
-	rpms << "yum-plugin-fastestmirror"
 	rpms << "mariadb-server perl-libwww-perl perl-LWP-Protocol-https perl-Regexp-Common dnsmasq"
 	rpms << "php dhclient monit perl-Authen-PAM"
 	rpms << "hddtemp ruby-augeas memcached"
@@ -763,7 +724,7 @@ def do_install_debs
 	pkgs << "libapache2-mod-passenger libapache2-mod-ruby"
 	pkgs << "libmagickcore-dev libmagickwand-dev libfcgi-dev"
 	pkgs << "libauthen-pam-perl libdbi-perl libwww-perl libregexp-common-perl sudo"
-	pkgs << "greyhole pmount ntpdate bc ruby-dbus"
+	pkgs << "pmount ntpdate bc ruby-dbus"
 
 	# TODO: decide if already installed packaged are eliminated first
 	to_install = pkgs.join(' ').split(' ')
@@ -840,7 +801,7 @@ def do_full_install()
 
 	link_apaste
 
-	message "Starting MySQL"
+	message "Starting MariaDB"
 	unless fedora? or centos?
 		do_system_silent "service " + MYSQL_SERVERNAME + " stop"
 	end
@@ -851,10 +812,7 @@ def do_full_install()
 	disable_dnssec
 
 	# initialize mysql
-	initialize_mysql
-
-	# create greyhole db
-	initialize_greyhole
+	initialize_mariadb
 
 	# initialize rails and database
 	message "Initializing Ruby on Rails and DB"
