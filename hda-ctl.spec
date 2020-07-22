@@ -1,7 +1,7 @@
-%global rubyrelease 2.2.3
+%global rubyrelease 2.7.1
 
 Name:           hda-ctl
-Version: 11.7.5
+Version: 11.7.6
 Release:        1
 
 Summary:        hda-ctl is the Amahi HDA daemon.
@@ -21,7 +21,7 @@ Requires: rubygem-mysql2 ruby-libs ruby-augeas rubygem(bundler) rubygem(ruby-dbu
 Requires: perl-Authen-PAM perl-libwww-perl perl-LWP-Protocol-https wget curl
 Requires: cadaver php php-mysqlnd perl-URI filesystem rsync cronie pmount bc
 Requires: php-gd php-mbstring php-xml php-mcrypt
-Requires: bind-utils psmisc
+Requires: bind-utils psmisc amahi-anywhere
 Requires:         systemd
 Requires(post):   systemd
 Requires(preun):  systemd

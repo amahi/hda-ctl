@@ -28,7 +28,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "11.7.5"
+$version = "11.7.6"
 
 # default network device
 @network_device = "eth0"
@@ -410,7 +410,7 @@ def start_all_services
 
 	# NOTE: monit must be the last one, to prevent race conditions
 	services_start = [ 'hda-ctl', 'hda-platform', HTTPD_SERVERNAME, 'dnsmasq',
-	MYSQL_SERVERNAME, SMB_SERVERNAME, NMB_SERVERNAME, 'monit', 'hddtemp', 'docker', 'memcached']
+	MYSQL_SERVERNAME, SMB_SERVERNAME, NMB_SERVERNAME, 'monit', 'hddtemp', 'memcached', 'amahi-anywhere']
 
 	if fedora? or centos?
 		services_stop = [ 'gpm', 'hplip', 'isdn', 'kudzu', 'sendmail',
@@ -686,7 +686,7 @@ def do_install_rpms
 	rpms << "fpaste perl-DBI rsync wget curl cronie pmount"
 	rpms << "v8"
 	rpms << "php-gd php-mbstring php-xml php-mcrypt"
-	rpms << "docker"
+	rpms << "amahi-anywhere"
 
 	list = rpms.join(' ').split(' ')
 	to_install = list.delete_if { |pname| installed.select{|p| p =~ /^#{pname}-[0-9]/} != [] }
