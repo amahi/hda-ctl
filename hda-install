@@ -28,7 +28,7 @@ require 'tempfile'
 require 'dbus'
 require 'ipaddr'
 
-$version = "11.7.6"
+$version = "11.7.7"
 
 # default network device
 @network_device = "eth0"
