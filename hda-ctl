@@ -88,7 +88,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "11.7.6";
+my $version = "11.7.7";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -840,6 +840,9 @@ sub print_dnsmasq_common_conf {
 	printf $dnsmasq "bogus-priv\n";
 	printf $dnsmasq "expand-hosts\n";
 	printf $dnsmasq "localise-queries\n";
+	printf $dnsmasq "# see https://bugs.amahi.org/issues/2432 for the addition of interface below\n";
+	printf $dnsmasq "interface=*\n";
+	printf $dnsmasq "# DEBUG\n# log-facility=/run/dnsmasq.log\n";
 	close $dnsmasq;
 
 	&mv ($file_dnsmasq_common, "/etc/dnsmasq.d/");
