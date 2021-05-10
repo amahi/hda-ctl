@@ -6,11 +6,9 @@ After=network.target NetworkManager.service mariadb.service
 Before=monit.service dnsmasq.service
 
 [Service]
-Type=forking
-PIDFile=/run/hda-ctl.pid
+Type=notify
 EnvironmentFile=-/etc/sysconfig/hda-ctl
 ExecStart=/usr/bin/hda-ctl $HDA_CTL_OPTIONS
-ExecReload=/usr/bin/kill -HUP $MAINPID
 StandardError=null
 Restart=always
 

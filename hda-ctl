@@ -23,7 +23,8 @@
 # note that if these settings are in the database, those always take priority when the program starts
 
 use strict;
-use DBI();
+use warnings;
+use DBI;
 use Getopt::Std;
 use LWP::Simple;
 use LWP::Protocol::https;
@@ -88,7 +89,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "11.7.7";
+my $version = "11.9.2";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -100,9 +101,8 @@ my $dnsmasq_in_use = $use_dnsmasq_dns || $use_dnsmasq_dhcp;
 our($opt_d, $opt_h);
 getopts('dh');
 
-my $pidfile = "/var/run/hda-ctl.pid";
 my $period = 600; # run period, in seconds
-my $cmdfile = "/var/run/hda-ctl/notify";
+my $cmdfile = "/run/hda-ctl/notify";
 
 my $platform = "unknown";
 my $named_user;
@@ -252,13 +252,19 @@ sub get_db_settings {
 
 sub db_connect {
 
+	my %attr = ( PrintError=>1,  # turn on error reporting via warn()
+             RaiseError=>0);   # turn off error reporting via die()
+
 	# wait forever until the DB is up
 	while (1) {
-                $dbh = DBI->connect("DBI:mysql:database=$DATABASE_NAME;host=localhost",
-                                $DATABASE_USER, $DATABASE_PASSWORD);
+		&log ("connecting to db.");
+                $dbh = DBI->connect("DBI:MariaDB:database=$DATABASE_NAME;host=localhost",
+                                $DATABASE_USER, $DATABASE_PASSWORD, \%attr);
 		if ($dbh && &check_db_sanity()) {
+			&log ("db connected.");
 			return;
 		}
+		&log ("db not connected -- trying again in a minute.");
 		sleep(60);
 	}
 }
@@ -1051,13 +1057,7 @@ sub basic_checks {
 		printf "Quitting ...\n";
 		exit (1);
 	}
-	if (-e $pidfile) {
-		printf "ERROR: this program appears to be running.\n";
-		printf "Quitting ...\n";
-		exit (1);
-	}
 	$platform = &get_platform();
-	&log ("running on platform: $platform");
 }
 
 sub get_platform {
@@ -1090,33 +1090,24 @@ sub fork_daemon {
 		print STDERR "${program}: can not fork ($!)\n";
 		exit -1;
 	} elsif ($pid) {
-		# parent simply exit
+		# the parent simply exits normally
 		exit 0;
 	}
-	# chil continues execution
+	# the child continues execution
 	$SIG{'CHLD'}   = 'DEFAULT';
 	open(STDOUT, ">/dev/null");
 	open(STDERR, ">/dev/null");
 	open(STDIN,  "</dev/null");
-	mkdir("/var/run/hda-ctl");
-
-	&write_pid ();
+	mkdir("/run/hda-ctl");
 }
 
-sub unlink_files {
-	unlink $pidfile;
-}
+sub setup_daemon {
 
-sub write_pid {
-
-	return unless ($pidfile);
-	local *FD;
-	if (! open(FD, "> $pidfile")) {
-		&log ("Cannot create file '$pidfile'. ($!)");
-	} else {
-		printf FD "$$\n";
-		close(FD);
-	}
+	$SIG{'CHLD'}   = 'IGNORE';
+	open(STDOUT, ">/dev/null");
+	open(STDERR, ">/dev/null");
+	open(STDIN,  "</dev/null");
+	mkdir("/run/hda-ctl");
 }
 
 sub do_action {
@@ -1311,62 +1302,37 @@ sub dump_mode {
 	exit (0);
 }
 
-sub command_fifo_old {
-	unless (-p $cmdfile) {
-		unlink $cmdfile;
-		my $prev_umask = umask 000;
-		if (! mkfifo($cmdfile, 0666)) {
-			&log("can’t mkfifo $cmdfile: $!");
-			return -1;
-		}
-		umask $prev_umask;
-	}
-
-	while (1) {
-		if (! open($CMDFIFO, "<", $cmdfile)) {
-			last;
-		}
-		$CMDFIFO->autoflush(1);
-		while (<$CMDFIFO>) {
-			chomp;
-			my $cmd = $_;
-			# FIXME!!! - check that commands being run are valid!
-			my $ret = system($cmd);
-		}
-		close ($CMDFIFO);
-	}
-	unlink $cmdfile;
-	return 0;
-}
-
 sub command_fifo {
 
-	if (! socket(SERV, PF_UNIX, SOCK_STREAM, 0)) {
+	my $server;
+
+	if (! socket($server, PF_UNIX, SOCK_STREAM, 0)) {
 		&log("can’t setup socket for $cmdfile: $!");
+		return(-1);
 	}
 
 	unlink $cmdfile;
 	my $prev_umask = umask 000;
-	if (! bind(SERV, sockaddr_un($cmdfile))) {
+	if (! bind($server, sockaddr_un($cmdfile))) {
 		&log("can’t bind with $cmdfile: $!");
 		return -1;
 	}
 	umask $prev_umask;
 
-	if (! listen(SERV, SOMAXCONN)) {
+	if (! listen($server, SOMAXCONN)) {
 		&log("can’t listen on $cmdfile: $!");
 		return -1;
 	}
 
-	&log("command fifo starting ...");
 	while (!$caught_term) {
 		# serve one at a time
-		while (accept(CLIENT, SERV)) {
-			CLIENT->autoflush(1);
-			while (<CLIENT>) {
+		&log("command fifo starting ...");
+		while (my $client = $server->accept()) {
+			$client->autoflush(1);
+			while (<$client>) {
 				if (/confirm: (.*)$/) {
 					# write ack back if found
-					print CLIENT $1;
+					print $client $1;
 					last;
 				}
 				chomp;
@@ -1374,7 +1340,7 @@ sub command_fifo {
 				# FIXME!!! - check that commands being run are valid!
 				my $ret = system($cmd);
 			}
-			close (CLIENT);
+			close ($client);
 		}
 		&log("WARNING: accept failed with: $!") unless $caught_term;
 	}
@@ -1464,7 +1430,9 @@ sub main {
 
         # first set platform and platform variables, these are needed by dump_mode
         $platform = &get_platform();
+
         &log ("running on platform: $platform");
+
         &set_platform_variables();
 
 	# dump mode exits after it's done
@@ -1474,22 +1442,32 @@ sub main {
 
 	&basic_checks ();
 
-	&fork_daemon ();
+	&setup_daemon ();
+
+	&log ("notifying systemd.");
+	system('systemd-notify --ready --status="Waiting for commands ..."');
+
 	my $command_processor_pid = &fork_command_fifo ();
 
 	# FIXME - this will reset the settings from the DB at
 	# every reboot
+	&log ("loadind db data.");
 	&db_connect ();
 
+	&log ("db data loaded.");
         &restart_named () unless ($use_dnsmasq_dns);
 	&restart_dhcpd () unless ($use_dnsmasq_dhcp);
 	&restart_dnsmasq () if $dnsmasq_in_use;
 
+	&log ("generating files.");
 	&generate_files ();
 
+	&log ("db disconnected files.");
         &db_disconnect ();
 
+	&log ("starting.");
 	&do_start_action();
+
 
 	umask 022;
 	do {
@@ -1516,7 +1494,6 @@ sub main {
 
 	&log ("caught SIGTERM: exiting hda-ctl v$version.") if $caught_term;
 	&do_shutdown_action();
-	&unlink_files();
 	kill('TERM', $command_processor_pid);
 
 	# exit normally
