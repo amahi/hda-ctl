@@ -33,6 +33,7 @@ use POSIX qw(strftime);
 use POSIX qw(mkfifo);
 use IO::Handle;
 use IO::File;
+use IO::Socket;
 use Socket;
 use Regexp::Common qw /net/;
 
@@ -89,7 +90,7 @@ my $default_dyn_lo = $DYN_LO || "100";
 my $default_dyn_hi = $DYN_HI || "254";
 my $default_dhcp_lease = $DHCP_LEASE || "14400";
 
-my $version = "11.9.2";
+my $version = "11.9.8";
 
 my $DATABASE_NAME = "hda_production";
 my $DATABASE_USER = "amahihda";
@@ -1081,26 +1082,6 @@ sub get_platform {
 	return "unknown";
 }
 
-### detach ourselves as a daemon
-
-sub fork_daemon {
-
-	my $pid = fork;
-	if ($pid < 0) {
-		print STDERR "${program}: can not fork ($!)\n";
-		exit -1;
-	} elsif ($pid) {
-		# the parent simply exits normally
-		exit 0;
-	}
-	# the child continues execution
-	$SIG{'CHLD'}   = 'DEFAULT';
-	open(STDOUT, ">/dev/null");
-	open(STDERR, ">/dev/null");
-	open(STDIN,  "</dev/null");
-	mkdir("/run/hda-ctl");
-}
-
 sub setup_daemon {
 
 	$SIG{'CHLD'}   = 'IGNORE';
@@ -1304,33 +1285,30 @@ sub dump_mode {
 
 sub command_fifo {
 
-	my $server;
-
-	if (! socket($server, PF_UNIX, SOCK_STREAM, 0)) {
-		&log("can’t setup socket for $cmdfile: $!");
-		return(-1);
-	}
+	my $prev_umask = umask 000;
 
 	unlink $cmdfile;
-	my $prev_umask = umask 000;
-	if (! bind($server, sockaddr_un($cmdfile))) {
-		&log("can’t bind with $cmdfile: $!");
-		return -1;
-	}
+
+	my $server = IO::Socket::UNIX->new(Type => SOCK_STREAM(), Local => $cmdfile, Listen => 1);
+
 	umask $prev_umask;
 
-	if (! listen($server, SOMAXCONN)) {
-		&log("can’t listen on $cmdfile: $!");
-		return -1;
+	if (! $server) {
+		&log("can’t setup socket for $cmdfile: $!");
+		return(-1);
 	}
 
 	while (!$caught_term) {
 		# serve one at a time
 		&log("command fifo starting ...");
 		while (my $client = $server->accept()) {
+			&log("command fifo loop 1 ...");
 			$client->autoflush(1);
+			&log("command fifo loop 2 ...");
 			while (<$client>) {
+				&log("command fifo loop 3 ...");
 				if (/confirm: (.*)$/) {
+					&log("command fifo loop 4 ...");
 					# write ack back if found
 					print $client $1;
 					last;
@@ -1338,7 +1316,9 @@ sub command_fifo {
 				chomp;
 				my $cmd = $_;
 				# FIXME!!! - check that commands being run are valid!
+				&log("command fifo loop 5 ...");
 				my $ret = system($cmd);
+				&log("command fifo loop 6 ...");
 			}
 			close ($client);
 		}
@@ -1346,19 +1326,22 @@ sub command_fifo {
 	}
 	&log("caught SIGTERM: command fifo terminating.");
 	unlink $cmdfile;
-	return 0;
 }
 
 sub fork_command_fifo {
 
 	my $pid = fork;
 	if ($pid < 0) {
+		&log ("problem forking command fifo");
 		print STDERR "${program}: can not fork ($!)\n";
 		exit -1;
 	} elsif ($pid) {
 		# parent
+		&log ("forking command fifo as PID $pid");
 		return $pid;
 	}
+
+	&log ("command fifo forked");
 
 	# this is the child process
 	my $ret = &command_fifo();
@@ -1444,10 +1427,10 @@ sub main {
 
 	&setup_daemon ();
 
+	my $command_processor_pid = &fork_command_fifo ();
+
 	&log ("notifying systemd.");
 	system('systemd-notify --ready --status="Waiting for commands ..."');
-
-	my $command_processor_pid = &fork_command_fifo ();
 
 	# FIXME - this will reset the settings from the DB at
 	# every reboot
