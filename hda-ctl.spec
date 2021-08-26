@@ -21,7 +21,7 @@ Requires: rubygem-mysql2 ruby-libs ruby-augeas rubygem(bundler) rubygem(ruby-dbu
 Requires: perl-Authen-PAM perl-libwww-perl perl-LWP-Protocol-https wget curl
 Requires: cadaver php php-mysqlnd perl-URI filesystem rsync cronie pmount bc
 Requires: php-gd php-mbstring php-xml php-mcrypt
-Requires: bind-utils psmisc amahi-anywhere
+Requires: bind-utils psmisc amahi-anywhere perl-DBD-MySQL
 Requires:         systemd
 Requires(post):   systemd
 Requires(preun):  systemd
